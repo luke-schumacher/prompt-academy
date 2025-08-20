@@ -46,9 +46,9 @@ body::before {
   background-image: var(--space-bg);
   background-size: cover;
   background-repeat: repeat;
-  opacity: 0.25;
+  opacity: 0.5;
   z-index: -1;
-  animation: move-space 60s linear infinite;
+  
 }
 
 @keyframes move-space {
