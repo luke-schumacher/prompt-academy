@@ -1,4 +1,4 @@
-:root {
+e:root {
   /* Dramatic palette for an immersive experience */
   --background: #0a192f;
   --foreground: #ccd6f6;
@@ -610,3 +610,18 @@ p {
     opacity: 1;
   }
 }
+/* Enhance starry background with more vibrant and busy pattern */
+:root {
+  --space-bg:
+    radial-gradient(circle at 5% 10%, rgba(255,255,255,0.6) 3px, transparent 5px),
+    radial-gradient(circle at 15% 80%, rgba(255,255,255,0.4) 2px, transparent 4px),
+    radial-gradient(circle at 30% 30%, rgba(100,149,237,0.6) 5px, transparent 7px),
+    radial-gradient(circle at 40% 60%, rgba(255,107,107,0.5) 4px, transparent 6px),
+    radial-gradient(circle at 60% 20%, rgba(0, 212, 255, 0.5) 6px, transparent 8px),
+    radial-gradient(circle at 75% 70%, rgba(248,117,255,0.5) 5px, transparent 7px),
+    radial-gradient(circle at 90% 40%, rgba(255,215,0,0.4) 4px, transparent 6px),
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.3) 2px, transparent 4px),
+    radial-gradient(circle at 10% 50%, rgba(64,224,208,0.5) 4px, transparent 6px),
+    radial-gradient(circle at 80% 90%, rgba(255,255,255,0.4) 5px, transparent 7px);
+}
+
