@@ -13,7 +13,7 @@
 
   /* Path to the starry background image.  We reference it in the
      body::before pseudo-element to create a moving cosmic backdrop. */
-  --space-bg: url('assets/space_background.png');
+  --space-bg: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.4) 2px, transparent 4px), radial-gradient(circle at 40% 70%, rgba(255,255,255,0.3) 2px, transparent 5px), radial-gradient(circle at 70% 20%, rgba(255,255,255,0.25) 1.5px, transparent 4px), radial-gradient(circle at 90% 80%, rgba(255,255,255,0.2) 2px, transparent 5px);
 }
 
 * {
@@ -413,14 +413,14 @@ p {
      attention on the core dilemma. */
   font-size: 4.5rem;
   margin-bottom: 1.25rem;
-  line-height: 1.1;
+  line-length: 1.1;
   color: var(--accent);
 }
 
 .final-slide p {
   font-size: 1.6rem;
   margin-bottom: 1.5rem;
-  line-height: 1.4;
+  line-length: 1.4;
 }
 
 .final-slide .resource-list li a {
@@ -460,7 +460,7 @@ p {
      spacing. */
   font-size: 4.5rem;
   margin-bottom: 1.25rem;
-  line-height: 1.1;
+  line-length: 1.1;
   color: var(--accent);
   font-weight: 700;
   /* Add a soft glow around the letters to amplify the sense of
@@ -470,7 +470,7 @@ p {
 .final-tagline {
   font-size: 1.5rem;
   margin-bottom: 1.2rem;
-  line-height: 1.4;
+  line-length: 1.4;
   color: var(--foreground);
 }
 
@@ -551,7 +551,7 @@ p {
 }
 .layer-card.conflict p {
   font-size: 1.4rem;
-  line-height: 1.5;
+  line-length: 1.5;
 }
 .layer-card:nth-child(1) {
   z-index: 3;
@@ -573,7 +573,7 @@ p {
 }
 .layer-content {
   font-size: 1.15rem;
-  line-height: 1.5;
+  line-length: 1.5;
   color: var(--foreground);
 }
 .layer-conflict {
