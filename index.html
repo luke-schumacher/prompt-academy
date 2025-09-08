@@ -7,7 +7,58 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <div id="screen-hero" class="screen hero">
+      <h1>Unmasking a chatbot: Who’s Really Talking?</h1>
+      <button id="start-btn">Start exploring</button>
+    </div>
+
+    <div id="screen-prompts" class="screen hidden">
+      <h2>Choose a prompt to begin the demo:</h2>
+      <div id="prompt-list" class="prompt-list"></div>
+      <div class="custom-prompt">
+        <input id="custom-input" type="text" placeholder="Or type your own question...">
+        <button id="custom-btn">Use my prompt</button>
+      </div>
+    </div>
+
+    <div id="screen-responses" class="screen hidden">
+      <h3 id="tagline" class="tagline">All answers below come from the same model.</h3>
+      <div id="message-div" class="message-div">
+        <p id="message-text"></p>
+        <button id="message-btn"></button>
+      </div>
+      <div id="responses-container" class="responses"></div>
+    </div>
+
+    <div id="screen-layers" class="screen hidden">
+      <div class="layer-header">
+        <h2>Instruction layers</h2>
+      </div>
+      <div id="layer-container" class="layer-container"></div>
+      <div class="layer-controls">
+        <button id="peel-btn">Reveal next layer</button>
+      </div>
+    </div>
+
+    <div id="screen-final" class="screen hidden">
+      <div class="final-slide">
+        <h2 class="final-question">Whose instructions really shape the conversation?</h2>
+        <div class="final-links">
+          <h3 class="learn-more">Want to learn more?</h3>
+          <ul class="resource-list">
+            <li><a href="https://docs.anthropic.com/en/release-notes/system-prompts" target="_blank">Anthropic’s 10,000‑word system prompt</a></li>
+            <li><a href="https://example.com/system-prompts-article" target="_blank">Other resources about system prompts and model behaviour</a></li>
+          </ul>
+        </div>
+        <div class="controls">
+          <button id="restart-btn">Test another prompt</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
