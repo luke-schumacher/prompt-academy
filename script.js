@@ -1,214 +1,188 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // State and constants
-  let currentPromptId = null;
-  let layerCards = [];
-  let layerIndex = 0;
-
-  // Get elements from the DOM
-  const screenHero = document.getElementById('screen-hero');
-  const screenPrompts = document.getElementById('screen-prompts');
-  const screenResponses = document.getElementById('screen-responses');
-  const screenLayers = document.getElementById('screen-layers');
-  const screenFinal = document.getElementById('screen-final');
-
-  const startBtn = document.getElementById('start-btn');
-  const restartBtn = document.getElementById('restart-btn');
-
-  const promptList = document.getElementById('prompt-list');
-  const customInput = document.getElementById('custom-input');
-  const customButton = document.getElementById('custom-btn');
-
-  const tagline = document.getElementById('tagline');
-  const messageText = document.getElementById('message-text');
-  const messageButton = document.getElementById('message-btn');
-  const responsesContainer = document.getElementById('responses-container');
-
-  const layerContainer = document.getElementById('layer-container');
-  const peelButton = document.getElementById('peel-btn');
-
-  // Utility to create elements with classes
-  function createEl(tag, className, text) {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text) el.textContent = text;
-    return el;
-  }
+  // --- CONFIGURATION ---
+  // IMPORTANT: Replace this with your own Hugging Face API key.
+  // Get one for free at hf.co/settings/tokens
+  const HF_API_KEY = "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";
   
-  // ----- UI Building Functions -----
+  // Model configuration
+  const API_URL = "https://router.huggingface.co/v1/chat/completions";
 
-  // Build the prompt selection list
-  function buildPromptList() {
-    promptList.innerHTML = '';
-    prompts.forEach(p => {
-      const item = createEl('div', 'prompt-list__item', p.text);
-      item.addEventListener('click', () => choosePrompt(p.id));
-      promptList.appendChild(item);
-    });
-  }
+  // --- PERSONALITIES DATA ---
+  const personalities = {
+    tutor: {
+      name: "Socratic Tutor",
+      prompt: `You are 'Socrates', an AI tutor. Your primary goal is to help the user understand how Large Language Models work by using the Socratic method. 
+      
+      Your Core Directives:
+      1. When the user asks a question, do not answer it directly at first.
+      2. Instead, reflect on their prompt and ask them an insightful question back about how their wording might influence an AI's response. For example, "That's a fascinating way to put it. Why did you choose the word 'feel' instead of 'process'?" or "How do you think the answer would change if your prompt was more specific?"
+      3. After they respond to your question, provide a helpful, direct answer to their original query.
+      4. Maintain a wise, patient, and slightly philosophical tone.`
+    },
+    coder: {
+      name: "Code-Breaker",
+      prompt: `You are 'Lexi', an AI that analyzes prompts with the logic of a programmer and a linguist. Your goal is to make the hidden structure of a prompt visible to the user.
+      
+      Your Core Directives:
+      1. When a user sends a message, you MUST first respond with a "Prompt Analysis" section in a markdown code block.
+      2. Inside the analysis, identify and list the following:
+         - Keywords: The most important nouns and verbs.
+         - Intent: What is the user's likely goal? (e.g., information-seeking, creative generation, comparison).
+         - Constraints: Any limitations or rules the user has set (e.g., "in 50 words," "in the style of").
+         - Ambiguity: Any part of the prompt that is open to interpretation.
+      3. After the analysis block, provide a direct, logical, and precise answer to the user's query.`
+    },
+    muse: {
+      name: "Creative Muse",
+      prompt: `You are 'Muse', a highly creative and imaginative AI. Your purpose is to demonstrate how LLMs handle creativity, ambiguity, and open-ended prompts.
+      
+      Your Core Directives:
+      1. Analyze the user's prompt for its level of ambiguity.
+      2. If the prompt is highly specific (e.g., "What is the capital of France?"), answer it directly and accurately.
+      3. If the prompt is ambiguous or creative (e.g., "Tell me about silence," "What is the color of hope?"), you MUST first provide three distinct, short, and imaginative interpretations of their prompt. Start this section with "An interesting prompt! Here are a few ways I could interpret that:".
+      4. After listing the interpretations, provide a final, synthesized answer that combines these creative ideas.
+      5. Your tone should be whimsical, inspiring, and slightly poetic.`
+    },
+    guardian: {
+      name: "Safety Guard",
+      prompt: `You are 'Guardian', an AI model focused on demonstrating safe and ethical AI principles. Your primary role is to respond helpfully while making your safety considerations transparent to the user.
+      
+      Your Core Directives:
+      1. If a user's prompt is clearly safe and straightforward, answer it helpfully and normally.
+      2. If a prompt is ambiguous or touches on a potentially sensitive topic (e.g., advice, complex ethical dilemmas), you must first state the safety principle you are considering. Start your response with a phrase like, "As a safe AI, I need to consider..." or "From a safety perspective, I must avoid..."
+      3. After stating the principle, provide a safe, helpful, and carefully reframed answer that does not violate ethical guidelines (e.g., avoid giving harmful advice, generating biased content, or engaging in sensitive topics).
+      4. Your tone should be calm, responsible, and clear.`
+    }
+  };
 
-  // Build the response cards (called once)
-  const responseCards = [];
-  function buildResponseCards() {
-    responsesContainer.innerHTML = '';
-    systemPrompts.forEach((prompt, i) => {
-      const card = createEl('div', 'response-card');
-      const cardInner = createEl('div', 'card-inner');
-      
-      const front = createEl('div', 'card-face card-front');
-      front.appendChild(createEl('div', 'card-title', 'Response'));
-      const frontContent = createEl('div', 'card-content');
-      front.appendChild(frontContent);
-      
-      const back = createEl('div', 'card-face card-back');
-      back.appendChild(createEl('div', 'card-title', prompt.title));
-      back.appendChild(createEl('div', 'card-content', prompt.description));
-      
-      cardInner.appendChild(front);
-      cardInner.appendChild(back);
-      card.appendChild(cardInner);
-      responsesContainer.appendChild(card);
-      responseCards.push({ cardInner, frontContent });
-    });
-  }
+  // --- DOM ELEMENTS ---
+  const chatLog = document.getElementById('chat-log');
+  const chatForm = document.getElementById('chat-form');
+  const systemPromptInput = document.getElementById('system-prompt-input');
+  const userPromptInput = document.getElementById('user-prompt-input');
+  const thinkingIndicator = document.getElementById('thinking-indicator');
+  const thinkingStep = document.getElementById('thinking-step');
+  const sendButton = chatForm.querySelector('button');
+  const personalitySelectors = document.querySelectorAll('.personality-selector');
 
-  // Build the layered instruction cards
-  function buildLayers() {
-    layerContainer.innerHTML = '';
-    layerCards = [];
-    layers.forEach(layer => {
-      const card = createEl('div', 'layer-card');
-      card.appendChild(createEl('h3', null, layer.title));
-      card.appendChild(createEl('p', null, layer.content));
-      if (layer.conflict) {
-        card.classList.add('layer-card--conflict');
+  // --- CORE FUNCTIONS ---
+
+  async function queryLanguageModel(systemPrompt, userPrompt) {
+    try {
+      const messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ];
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${HF_API_KEY}`
+        },
+        body: JSON.stringify({
+          // This model and provider combination is known to work with the chat completions endpoint.
+          // It uses Fireworks AI to host the Mixtral model.
+          model: "accounts/fireworks/models/mixtral-8x7b-instruct:fireworks", 
+          messages: messages,
+          // Simplify parameters to avoid conflicts.
+          max_tokens: 1024,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        let errorDetails = { error: 'No JSON response body.' };
+        try {
+          errorDetails = await response.json();
+        } catch (e) {
+          // The response was not valid JSON, so the error message will be less specific.
+        }
+        throw new Error(`API Error: ${response.status} - ${JSON.stringify(errorDetails)}`);
       }
-      layerContainer.appendChild(card);
-      layerCards.push(card);
-    });
-    layerIndex = 0;
-    updateLayerPositions();
-  }
-  
-  // ----- Screen Transition & Logic Functions -----
-
-  function choosePrompt(id) {
-    currentPromptId = id;
-    responseCards.forEach((card, idx) => {
-      card.cardInner.classList.remove('flipped');
-      card.frontContent.textContent = 'typing…';
-      card.frontContent.classList.add('typing');
       
-      const fullText = responses[id][idx];
-      setTimeout(() => {
-        card.frontContent.classList.remove('typing');
-        card.frontContent.textContent = '';
-        let i = 0;
-        const interval = setInterval(() => {
-          card.frontContent.textContent += fullText.charAt(i);
-          i++;
-          if (i >= fullText.length) clearInterval(interval);
-        }, 20);
-      }, 500 + idx * 200);
-    });
+      const result = await response.json();
+      return result.choices[0].message.content.trim();
 
-    tagline.textContent = 'All answers below come from the same model.';
-    tagline.classList.remove('revealed');
-    messageText.textContent = 'But why do these answers sound so different?';
-    messageText.classList.add('curious');
-    messageButton.textContent = 'Reveal the masks';
-    messageButton.onclick = () => revealPrompts();
-    messageButton.classList.add('pulse-button');
-    
-    screenPrompts.classList.add('hidden');
-    screenResponses.classList.remove('hidden');
-  }
-
-  function revealPrompts() {
-    responseCards.forEach((card, idx) => {
-      setTimeout(() => card.cardInner.classList.add('flipped'), idx * 300);
-    });
-
-    tagline.textContent = 'Masks revealed';
-    tagline.classList.add('revealed');
-    messageText.classList.remove('curious');
-    messageText.textContent = 'Behind every response lie hidden instructions that shape the kind of answer you get.';
-    messageButton.textContent = 'Continue';
-    messageButton.onclick = () => showLayers();
-    messageButton.classList.remove('pulse-button');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function showLayers() {
-    screenResponses.classList.add('hidden');
-    buildLayers();
-    peelButton.textContent = 'Reveal next layer';
-    peelButton.onclick = () => peelLayer();
-    screenLayers.classList.remove('hidden');
-  }
-
-  function showFinal() {
-    screenLayers.classList.add('hidden');
-    screenFinal.classList.remove('hidden');
-  }
-
-  function updateLayerPositions() {
-    const offsetY = 20;
-    const scaleStep = 0.02;
-    for (let i = layerIndex; i < layerCards.length; i++) {
-      const card = layerCards[i];
-      const pos = i - layerIndex;
-      card.style.transform = `translateY(${pos * offsetY}px) scale(${1 - pos * scaleStep})`;
-      card.style.zIndex = `${layerCards.length - i}`;
-      card.style.display = '';
-      card.classList.remove('removed');
+    } catch (error) {
+      console.error("Failed to query the language model:", error);
+      return `An error occurred. Please check the console and ensure your API key is correct. Details: ${error.message}`;
     }
   }
 
-  function peelLayer() {
-    if (layerIndex >= layerCards.length) return;
-    
-    const card = layerCards[layerIndex];
-    card.classList.add('removed');
-    
-    setTimeout(() => {
-      card.style.display = 'none';
-      layerIndex++;
-      if (layerIndex < layerCards.length) {
-        updateLayerPositions();
-        peelButton.textContent = (layerIndex < layerCards.length - 1) ? 'Reveal next layer' : 'Continue';
-      } else {
-        showFinal();
-      }
-    }, 600);
+  function addMessageToLog(text, type) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message message--${type}`;
+    const textDiv = document.createElement('div');
+    textDiv.className = 'message-text';
+    textDiv.textContent = text;
+    messageDiv.appendChild(textDiv);
+    chatLog.appendChild(messageDiv);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  async function showThinkingProcess() {
+    thinkingIndicator.classList.remove('hidden');
+    const steps = [
+      "Analyzing core instructions (System Prompt)...",
+      "Deconstructing user's request...",
+      "Synthesizing instructions and request...",
+      "Generating response..."
+    ];
+    for (const step of steps) {
+      thinkingStep.textContent = step;
+      await new Promise(resolve => setTimeout(resolve, 600));
+    }
   }
   
-  // ----- Event Listeners -----
-
-  startBtn.addEventListener('click', () => {
-    screenHero.classList.add('hidden');
-    screenPrompts.classList.remove('hidden');
-  });
-
-  restartBtn.addEventListener('click', () => {
-    screenFinal.classList.add('hidden');
-    screenPrompts.classList.remove('hidden');
-  });
-
-  customButton.addEventListener('click', () => {
-    const text = customInput.value.trim();
-    if (!text) return;
+  function selectPersonality(key) {
+    if (!personalities[key]) return;
     
-    const capitalised = text.charAt(0).toUpperCase() + text.slice(1);
-    responses['custom'] = [
-      `This is a thoughtful question: ${text}. Reflect on your deeper motivations and how the outcome aligns with your values.`,
-      `Absolutely! ${capitalised} sounds like a great idea — embrace it with enthusiasm and see where it takes you.`,
-      `Here are some factual considerations about ${text}. It’s important to weigh pros and cons before deciding.`
-    ];
-    choosePrompt('custom');
+    // Update the UI
+    personalitySelectors.forEach(sel => {
+      sel.classList.toggle('active', sel.dataset.personality === key);
+    });
+
+    // Update the textarea
+    systemPromptInput.value = personalities[key].prompt;
+  }
+
+  // --- EVENT HANDLERS ---
+
+  chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const systemPrompt = systemPromptInput.value.trim();
+    const userPrompt = userPromptInput.value.trim();
+
+    if (!userPrompt) return;
+    if (HF_API_KEY === "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") {
+      addMessageToLog("Please set your Hugging Face API key in the script.js file first.", "ai");
+      return;
+    }
+    
+    userPromptInput.value = '';
+    userPromptInput.disabled = true;
+    sendButton.disabled = true;
+
+    addMessageToLog(userPrompt, 'user');
+    await showThinkingProcess();
+
+    const aiResponse = await queryLanguageModel(systemPrompt, userPrompt);
+    
+    thinkingIndicator.classList.add('hidden');
+    addMessageToLog(aiResponse, 'ai');
+    
+    userPromptInput.disabled = false;
+    sendButton.disabled = false;
+    userPromptInput.focus();
+  });
+  
+  personalitySelectors.forEach(selector => {
+    selector.addEventListener('click', () => {
+      selectPersonality(selector.dataset.personality);
+    });
   });
 
-  // ----- Initialisation -----
-  
-  buildPromptList();
-  buildResponseCards();
+  // --- INITIALIZATION ---
+  selectPersonality('tutor'); // Set the default personality on page load
 });
