@@ -7,55 +7,85 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="main-container">
-    <div class="panel architect-panel">
-      <div class="panel-header">
-        <h2>1. Define the AI's Personality</h2>
-        <p>Select a base personality, then customize its core instructions in the textbox below.</p>
-      </div>
-      
-      <div id="personality-selector-container" class="personality-selector-container">
-        <div class="personality-selector active" data-personality="tutor">
-          <h3>The Socratic Tutor</h3>
-          <p>Asks questions to make you think about how your prompt affects the answer.</p>
-        </div>
-        <div class="personality-selector" data-personality="coder">
-          <h3>The Code-Breaker</h3>
-          <p>Analyzes your prompt technically before answering, revealing structure.</p>
-        </div>
-        <div class="personality-selector" data-personality="muse">
-          <h3>The Creative Muse</h3>
-          <p>Shows how LLMs handle ambiguity by providing creative interpretations.</p>
-        </div>
-        <div class="personality-selector" data-personality="guardian">
-          <h3>The Safety Guard</h3>
-          <p>Demonstrates ethical boundaries by explaining its safety considerations.</p>
-        </div>
-      </div>
 
-      <textarea id="system-prompt-input" class="system-prompt-textarea" spellcheck="false"></textarea>
+  <div id="screen-start" class="screen visible">
+    <div class="start-content">
+      <h1 class="title-main">The LLM Architect</h1>
+      <p class="subtitle">Shape, test, and understand the minds of language models.</p>
+      <div class="persona-previews">
+        <div class="persona-preview" style="background-image: url('https://source.unsplash.com/random/200x300?philosophy');"><span>The Socratic Tutor</span></div>
+        <div class="persona-preview" style="background-image: url('https://source.unsplash.com/random/200x300?code');"><span>The Code-Breaker</span></div>
+        <div class="persona-preview" style="background-image: url('https://source.unsplash.com/random/200x300?art');"><span>The Creative Muse</span></div>
+        <div class="persona-preview" style="background-image: url('https://source.unsplash.com/random/200x300?shield');"><span>The Safety Guard</span></div>
+      </div>
+      <button id="start-button" class="cta-button">Begin the Experience</button>
     </div>
+  </div>
 
-    <div class="panel chat-panel">
-      <div class="panel-header">
-        <h2>2. Test Your Creation</h2>
-        <p>Interact with the AI you've defined and observe its behavior.</p>
-      </div>
-      <div id="chat-log" class="chat-log">
-        <div class="message message--ai">
-          <div class="message-text">Hello! Start by choosing a personality for me on the left, then send a message.</div>
+  <div id="screen-instructions" class="screen hidden">
+    <div class="instructions-content">
+      <h2>Your Mission, Architect</h2>
+      <p>Large Language Models (LLMs) aren't just empty vessels; they are guided by a powerful, hidden set of rules called a <strong>System Prompt</strong>. This prompt defines their personality, their goals, and their boundaries before they even see your first message.</p>
+      <p>In this experience, you will:</p>
+      <ul>
+        <li><strong>Select</strong> one of four base AI personalities.</li>
+        <li><strong>Customize</strong> its core instructions to your liking.</li>
+        <li><strong>Interact</strong> with your creation and observe how deeply the System Prompt shapes every single response.</li>
+      </ul>
+      <p>Your goal is to understand the direct link between instruction and behavior. Ready to build a mind?</p>
+      <button id="instructions-continue-button" class="cta-button">Proceed to the Dashboard</button>
+    </div>
+  </div>
+
+  <div id="screen-dashboard" class="screen hidden">
+    <div class="main-container">
+      <div class="panel architect-panel">
+        <div class="panel-header">
+          <h2>1. Define the AI's Personality</h2>
+          <p>Select a base personality, then customize its core instructions in the textbox below.</p>
         </div>
-      </div>
-      <div id="thinking-indicator" class="message message--thinking hidden">
-        <div class="message-text">
-          <div class="spinner"></div>
-          <span id="thinking-step"></span>
+        <div id="personality-selector-container" class="personality-selector-container">
+          <div class="personality-selector active" data-personality="tutor">
+            <h3>The Socratic Tutor</h3>
+            <p>Asks questions to guide your thinking.</p>
+          </div>
+          <div class="personality-selector" data-personality="coder">
+            <h3>The Code-Breaker</h3>
+            <p>Analyzes your prompt technically.</p>
+          </div>
+          <div class="personality-selector" data-personality="muse">
+            <h3>The Creative Muse</h3>
+            <p>Handles ambiguity with creativity.</p>
+          </div>
+          <div class="personality-selector" data-personality="guardian">
+            <h3>The Safety Guard</h3>
+            <p>Demonstrates ethical boundaries.</p>
+          </div>
         </div>
+        <textarea id="system-prompt-input" class="system-prompt-textarea" spellcheck="false"></textarea>
       </div>
-      <form id="chat-form" class="chat-form">
-        <input id="user-prompt-input" type="text" placeholder="Send a message..." autocomplete="off" required>
-        <button type="submit">Send</button>
-      </form>
+
+      <div class="panel chat-panel">
+        <div class="panel-header">
+          <h2>2. Test Your Creation</h2>
+          <p>Interact with the AI you've defined.</p>
+        </div>
+        <div id="chat-log" class="chat-log">
+          <div class="message message--ai">
+            <div class="message-text">Hello! I am ready for your instructions. Choose a personality for me on the left, then send a message.</div>
+          </div>
+        </div>
+        <div id="thinking-indicator" class="message message--thinking hidden">
+          <div class="message-text">
+            <div class="spinner"></div>
+            <span id="thinking-step"></span>
+          </div>
+        </div>
+        <form id="chat-form" class="chat-form">
+          <input id="user-prompt-input" type="text" placeholder="Send a message..." autocomplete="off" required>
+          <button type="submit">Send</button>
+        </form>
+      </div>
     </div>
   </div>
 
