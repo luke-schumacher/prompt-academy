@@ -17,7 +17,7 @@ const screenDashboardContainer = document.querySelector('#screen-dashboard .main
 
 // --- CONFIGURATION ---
 const API_KEYS = {
-    groq: "INSERT_HERE",
+    groq: "INSERT_HERE", // Reset to placeholder for security
 };
 
 // Add model status indicator
@@ -93,6 +93,89 @@ apiKeyButton.onclick = () => {
     document.getElementById('groq-key').value = API_KEYS.groq;
     apiModal.style.display = 'flex';
 };
+
+// --- START SCREEN ANIMATION ---
+const personaCanvas = document.getElementById('persona-canvas');
+let animationFrameId;
+const personaData = [
+    { name: "Socratic Tutor", image: 'Socratic-Tutor.png' },
+    { name: "Code-Breaker", image: 'Code-Breaker.png' },
+    { name: "Creative Muse", image: 'Creative-Muse.png' },
+    { name: "Safety Guard", image: 'Safety-Guard.png' }
+];
+
+let floatingPersonas = [];
+const PERSONA_SIZE = 200;  // Updated to match CSS
+const PERSONA_RADIUS = PERSONA_SIZE / 2;
+
+function createFloatingPersonas() {
+    if (!personaCanvas) return;
+    const bounds = personaCanvas.getBoundingClientRect();
+
+    personaData.forEach(data => {
+        const personaEl = document.createElement('div');
+        personaEl.className = 'floating-persona';
+        const imgEl = document.createElement('img');
+        imgEl.src = data.image;
+        imgEl.alt = data.name;
+        personaEl.appendChild(imgEl);
+
+        personaCanvas.appendChild(personaEl);
+
+        const speed = (Math.random() * 0.4 + 0.2);
+        const angle = Math.random() * 2 * Math.PI;
+
+        floatingPersonas.push({
+            el: personaEl,
+            x: Math.random() * (bounds.width - PERSONA_SIZE),
+            y: Math.random() * (bounds.height - PERSONA_SIZE),
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            radius: PERSONA_RADIUS
+        });
+    });
+}
+
+function animate() {
+    if (!personaCanvas) return;
+    const bounds = personaCanvas.getBoundingClientRect();
+
+    floatingPersonas.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x <= 0 || p.x + PERSONA_SIZE >= bounds.width) p.vx *= -1;
+        if (p.y <= 0 || p.y + PERSONA_SIZE >= bounds.height) p.vy *= -1;
+
+        p.x = Math.max(0, Math.min(p.x, bounds.width - PERSONA_SIZE));
+        p.y = Math.max(0, Math.min(p.y, bounds.height - PERSONA_SIZE));
+
+        for (let j = i + 1; j < floatingPersonas.length; j++) {
+            const other = floatingPersonas[j];
+            const dx = (other.x + other.radius) - (p.x + p.radius);
+            const dy = (other.y + other.radius) - (p.y + p.radius);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < p.radius + other.radius) {
+                const tempVx = p.vx;
+                const tempVy = p.vy;
+                p.vx = other.vx;
+                p.vy = other.vy;
+                other.vx = tempVx;
+                other.vy = tempVy;
+            }
+        }
+        p.el.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    });
+
+    animationFrameId = requestAnimationFrame(animate);
+}
+
+function stopAnimation() {
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+    }
+}
 
 // --- PERSONALITIES DATA ---
 const personalities = {
@@ -250,7 +333,7 @@ function updateModelStatus(modelName, status) {
   } else if (status === 'success') {
     modelStatusElement.innerHTML = `<span style="color: var(--accent);">✓</span> Connected to: ${modelName}`;
   } else if (status === 'error') {
-    modelStatusElement.innerHTML = `<span style="color: red;">❌</span> Connection Error<br><small>See console for details.</small>`;
+    modelStatusElement.innerHTML = `<span style="color: red;">⌐</span> Connection Error<br><small>See console for details.</small>`;
   }
 }
 
@@ -292,7 +375,11 @@ function selectPersonality(key) {
 }
 
 // --- EVENT HANDLERS ---
-startButton.addEventListener('click', () => showScreen(screenInstructions));
+startButton.addEventListener('click', () => {
+    stopAnimation();
+    showScreen(screenInstructions);
+});
+
 instructionsContinueButton.addEventListener('click', () => {
   showScreen(screenDashboard);
   addInfoMessage();
@@ -315,21 +402,21 @@ chatForm.addEventListener('submit', async (e) => {
   let aiResponse;
   
   try {
-    if (API_KEYS.groq) {
-      updateModelStatus("Groq - Mixtral-8x7B", "trying");
+    if (API_KEYS.groq && API_KEYS.groq !== "INSERT_HERE") {
+      updateModelStatus("Groq - Llama 3.1 8B", "trying");
       
       const groq = new Groq({ apiKey: API_KEYS.groq, dangerouslyAllowBrowser: true });
       const completion = await groq.chat.completions.create({
-            messages: [
-             { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
-         ],
-          model: "llama-3.1-8b-instant", // Use the supported model
-          temperature: 0.7
-        });
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        model: "llama-3.1-8b-instant",
+        temperature: 0.7
+      });
 
       aiResponse = completion.choices[0].message.content.trim();
-      updateModelStatus("Groq - Mixtral-8x7B", "success");
+      updateModelStatus("Groq - Llama 3.1 8B", "success");
     } else {
       updateModelStatus("Intelligent Simulation", "demo");
       aiResponse = getIntelligentResponse(systemPrompt, userPrompt);
@@ -337,7 +424,7 @@ chatForm.addEventListener('submit', async (e) => {
   } catch (error) {
     console.error("API Call Failed:", error);
     updateModelStatus("Intelligent Simulation", "error");
-    aiResponse = `Sorry, a connection error occurred. Please check your API key and try again. Falling back to demo mode.`;
+    aiResponse = `Sorry, a connection error occurred. Please check your API key and try again. Falling back to demo mode:\n\n${getIntelligentResponse(systemPrompt, userPrompt)}`;
   }
 
   thinkingIndicator.classList.add('hidden');
@@ -355,7 +442,7 @@ personalitySelectors.forEach(selector => {
 });
 
 function addInfoMessage() {
-  const isApiConfigured = API_KEYS.groq;
+  const isApiConfigured = API_KEYS.groq && API_KEYS.groq !== "INSERT_HERE";
   const infoDiv = document.createElement('div');
   infoDiv.className = 'message message--ai';
   const textDiv = document.createElement('div');
@@ -370,5 +457,13 @@ function addInfoMessage() {
 }
 
 // --- INITIALIZATION ---
-selectPersonality('tutor');
-addInfoMessage();
+function init() {
+    selectPersonality('tutor');
+    if (document.getElementById('screen-start').classList.contains('visible')) {
+        createFloatingPersonas();
+        animate();
+    }
+    addInfoMessage();
+}
+
+init();

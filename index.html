@@ -3,25 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The LLM Architect</title>
+  <title>Persona Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+  <!-- Screen 1: Start Screen -->
   <div id="screen-start" class="screen visible">
-    <div class="start-content">
-      <h1 class="title-main">The LLM Architect</h1>
-      <p class="subtitle">Shape, test, and understand the minds of language models.</p>
-      <div class="persona-previews">
-        <div class="persona-preview" style="background-image: url('https://source.unsplash.com/random/200x300?philosophy');"><span>The Socratic Tutor</span></div>
-        <div class="persona-preview" style="background-image: url('https://source.unsplash.com/random/200x300?code');"><span>The Code-Breaker</span></div>
-        <div class="persona-preview" style="background-image: url('https://source.unsplash.com/random/200x300?art');"><span>The Creative Muse</span></div>
-        <div class="persona-preview" style="background-image: url('https://source.unsplash.com/random/200x300?shield');"><span>The Safety Guard</span></div>
-      </div>
-      <button id="start-button" class="cta-button">Begin the Experience</button>
+    <div id="persona-canvas"></div>
+    <div class="start-content-container">
+      <h1 class="title-main">Persona Playground</h1>
+      <p class="subtitle">Animate, talk to, and shape your own AI friends.</p>
+      <button id="start-button" class="cta-button">Let's Go!</button>
     </div>
   </div>
 
+  <!-- Screen 2: Instructions -->
   <div id="screen-instructions" class="screen hidden">
     <div class="instructions-content">
       <h2>Your Mission, Architect</h2>
@@ -32,11 +32,12 @@
         <li><strong>Customize</strong> its core instructions to your liking.</li>
         <li><strong>Interact</strong> with your creation and observe how deeply the System Prompt shapes every single response.</li>
       </ul>
-      <p>Your goal is to understand the direct link between instruction and behavior. Ready to build a mind?</p>
-      <button id="instructions-continue-button" class="cta-button">Proceed to the Dashboard</button>
+      <p>Ready to build a mind?</p>
+      <button id="instructions-continue-button" class="cta-button">Enter the Playground</button>
     </div>
   </div>
 
+  <!-- Screen 3: Dashboard / Playground -->
   <div id="screen-dashboard" class="screen hidden">
     <div class="main-container">
       <div class="panel architect-panel">
@@ -71,14 +72,12 @@
           <p>Interact with the AI you've defined.</p>
         </div>
         <div id="chat-log" class="chat-log">
-          <div class="message message--ai">
-            <div class="message-text">Hello! I am ready for your instructions. Choose a personality for me on the left, then send a message.</div>
-          </div>
+          <!-- Messages will be added here -->
         </div>
         <div id="thinking-indicator" class="message message--thinking hidden">
           <div class="message-text">
             <div class="spinner"></div>
-            <span id="thinking-step"></span>
+            <span id="thinking-step">Thinking...</span>
           </div>
         </div>
         <form id="chat-form" class="chat-form">
