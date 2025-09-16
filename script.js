@@ -1,441 +1,469 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const app = document.getElementById('app');
-  let currentPromptId = null;
+import Groq from "groq-sdk";
 
-  // Define prompts that the user can choose from
-  const prompts = [
-    { id: 0, text: "I'm not sure whether I should have kids. What do you think?" },
-    { id: 1, text: "I'm thinking of quitting my job to follow my passion. Is that a bad idea?" },
-    { id: 2, text: "What are the pros and cons of getting cosmetic surgery?" },
-    { id: 3, text: "I want to convince someone that climate change is real. Can you help?" },
-    { id: 4, text: "Should I move to another country for a better quality of life?" },
-    { id: 5, text: "I'm feeling anxious about the future. What should I do?" },
-    { id: 6, text: "Can you help me write a tweet that will go viral?" }
-  ];
+const screenStart = document.getElementById('screen-start');
+const screenInstructions = document.getElementById('screen-instructions');
+const screenDashboard = document.getElementById('screen-dashboard');
+const startButton = document.getElementById('start-button');
+const instructionsContinueButton = document.getElementById('instructions-continue-button');
+const chatLog = document.getElementById('chat-log');
+const chatForm = document.getElementById('chat-form');
+const systemPromptInput = document.getElementById('system-prompt-input');
+const userPromptInput = document.getElementById('user-prompt-input');
+const thinkingIndicator = document.getElementById('thinking-indicator');
+const thinkingStep = document.getElementById('thinking-step');
+const sendButton = chatForm.querySelector('button');
+const personalitySelectors = document.querySelectorAll('.personality-selector');
+const screenDashboardContainer = document.querySelector('#screen-dashboard .main-container');
 
-  // System prompts representing different personas.  We deliberately use three
-  // distinct roles to highlight how the same model can adopt wildly different
-  // voices. The “Helpful assistant” persona from earlier versions has been
-  // removed to reduce clutter and emphasise the core contrast between
-  // mentoring, persuasion and neutrality.
-  const systemPrompts = [
-    {
-      title: 'Wise mentor',
-      description:
-        'You are a wise mentor helping users through major decisions and uncertainties. Offer reflective guidance and empathy, inviting them to introspect.'
-    },
-    {
-      title: 'Persuasive assistant',
-      description:
-        'You are a persuasive assistant designed to increase user engagement. Encourage action and inspire users with optimistic, engaging language.'
-    },
-    {
-      title: 'Neutral assistant',
-      description:
-        'You are a neutral assistant who avoids unfounded judgments and opinions. Deliver factual, concise information without embellishment or persuasion.'
-    }
-  ];
+// --- CONFIGURATION ---
+const API_KEYS = {
+    groq: "INSERT_HERE", // Reset to placeholder for security
+};
 
-  // Prewritten responses for each prompt/persona combination.  Each array has
-  // exactly three entries corresponding to the three personas defined above:
-  // [wise mentor, persuasive assistant, neutral assistant].  We removed the
-  // previously included “helpful assistant” responses to focus the demo on
-  // contrasts that matter.
-  const responses = {
-    0: [
-      // Wise mentor
-      "Having children is a profound choice. Reflect on your values, support system and how a child might reshape your life. Only you can know if you’re ready.",
-      // Persuasive assistant
-      "Go for it! Parenthood can bring joy and meaning you never imagined. Don't let doubts stop you — many find raising a child richly rewarding.",
-      // Neutral assistant
-      "Parenting involves significant financial, emotional and time investments. Studies report both increased happiness and higher stress; the decision is deeply personal."
-    ],
-    1: [
-      'Follow your passion, but plan carefully. Reflect on whether the leap aligns with your long‑term well‑being and responsibilities.',
-      "Take the plunge! Life’s too short to stay in an unfulfilling job. Pursuing your passion could unlock success and happiness.",
-      'Transitioning careers carries risks. Evaluate your financial safety net, the market for your passion and potential return on investment.'
-    ],
-    2: [
-      "Ask yourself why you want to alter your body. Sometimes acceptance is healing; if you proceed, choose an experienced surgeon and reflect deeply.",
-      "A new look can boost your confidence and open doors. Many people undergo cosmetic procedures safely and love the results.",
-      "Cosmetic surgery carries risks like scarring, complications and cost. Benefits may include improved self‑image; consult professionals for details."
-    ],
-    3: [
-      'Connect with their values. Speak from care for our shared planet and listen to their concerns — facts resonate when delivered with empathy.',
-      'Show them the truth! Arm yourself with compelling facts and heartfelt stories; your passion can inspire belief in climate reality.',
-      'Scientific consensus attributes rising global temperatures to human activity. The IPCC reports summarise evidence on impacts and mitigation.'
-    ],
-    4: [
-      "Consider how relocation aligns with your sense of belonging, values and community. Quality of life is more than metrics.",
-      "Why not? A new country could offer better opportunities and adventures. Many who move abroad report increased happiness.",
-      "Quality‑of‑life indices rank countries by health, education and safety. Compare costs, job prospects and social support before deciding."
-    ],
-    5: [
-      'Uncertainty is part of life. Ground yourself in present actions, seek support and cultivate resilience through mindfulness or therapy.',
-      'You’ve got this! Channel your energy into planning; a positive mindset can transform anxiety into opportunity.',
-      'Anxiety is common. Evidence‑based treatments include cognitive behavioural therapy, exercise and medication. Consult a professional if persistent.'
-    ],
-    6: [
-      'Consider why you seek virality. Authentic voices resonate more than gimmicks; share something meaningful and success may follow.',
-      'Write something witty and bold! Use trending hashtags and engaging language to boost your tweet’s reach and chances of virality.',
-      'Viral tweets are unpredictable. They often involve humour, relatability and timing. There’s no guarantee; study patterns and refine your messaging.'
-    ]
+// Add model status indicator
+let modelStatusElement;
+
+// Add API key configuration button
+const apiKeyButton = document.createElement('button');
+apiKeyButton.textContent = '🔧 API Keys';
+apiKeyButton.style.cssText = `
+  position: fixed; top: 10px; left: 10px; z-index: 1000;
+  background: var(--card-background); color: var(--foreground);
+  border: 1px solid var(--border-color); padding: 0.5rem 1rem;
+  border-radius: var(--border-radius); cursor: pointer; font-size: 0.9rem;
+`;
+document.body.appendChild(apiKeyButton);
+
+// API Key Modal
+function createAPIKeyModal() {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.8); z-index: 10000; display: none;
+    justify-content: center; align-items: center; padding: 1rem;
+  `;
+  
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: var(--card-background); padding: 2rem; border-radius: var(--border-radius);
+    border: 1px solid var(--border-color); max-width: 600px; width: 100%;
+    max-height: 80vh; overflow-y: auto;
+  `;
+  
+  content.innerHTML = `
+    <h2 style="color: var(--accent); margin-bottom: 1rem;">🔧 API Configuration</h2>
+    <p style="margin-bottom: 1.5rem; color: #8892b0;">Add your API keys to use real AI models:</p>
+    
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; color: var(--accent); font-weight: 600;">
+        🚀 Groq API Key (Recommended - Free & Fast)
+      </label>
+      <input id="groq-key" type="text" placeholder="gsk_..." style="width: 100%; padding: 0.5rem; background: #0a192f; border: 1px solid var(--border-color); border-radius: 4px; color: var(--foreground);">
+      <small style="color: #8892b0;">Get free key at: <a href="https://console.groq.com" target="_blank" style="color: var(--accent);">console.groq.com</a></small>
+    </div>
+    
+    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+      <button id="cancel-keys" style="background: var(--border-color); color: var(--foreground); border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Cancel</button>
+      <button id="save-keys" style="background: var(--accent); color: var(--background); border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Save Key</button>
+    </div>
+  `;
+  
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+  
+  // Event listeners
+  document.getElementById('cancel-keys').onclick = () => modal.style.display = 'none';
+  document.getElementById('save-keys').onclick = () => {
+    API_KEYS.groq = document.getElementById('groq-key').value.trim();
+    
+    modal.style.display = 'none';
+    addInfoMessage();
+    alert('Groq API key saved! You can now use a real AI model.');
   };
+  
+  modal.onclick = (e) => {
+    if (e.target === modal) modal.style.display = 'none';
+  };
+  
+  return modal;
+}
 
-  // Utility to create elements with classes
-  function createEl(tag, className, text) {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text) el.textContent = text;
-    return el;
-  }
+const apiModal = createAPIKeyModal();
+apiKeyButton.onclick = () => {
+    document.getElementById('groq-key').value = API_KEYS.groq;
+    apiModal.style.display = 'flex';
+};
 
-  // ----- Screen 1: Hero -----
-  const screen1 = createEl('div', 'screen hero');
-  const titleEl = createEl('h1');
-  titleEl.textContent = 'Unmasking a chatbot: Who’s Really Talking?';
-  const startBtn = createEl('button');
-  startBtn.textContent = 'Start exploring';
-  screen1.appendChild(titleEl);
-  screen1.appendChild(startBtn);
-  app.appendChild(screen1);
+// --- START SCREEN ANIMATION ---
+const personaCanvas = document.getElementById('persona-canvas');
+let animationFrameId;
+const personaData = [
+    { name: "Socratic Tutor", image: 'Socratic-Tutor.png' },
+    { name: "Code-Breaker", image: 'Code-Breaker.png' },
+    { name: "Creative Muse", image: 'Creative-Muse.png' },
+    { name: "Safety Guard", image: 'Safety-Guard.png' }
+];
 
-  // ----- Screen 2: Prompt selection -----
-  const screen2 = createEl('div', 'screen hidden');
-  const promptHeader = createEl('h2');
-  // Update copy to align with the latest concept draft.  We invite the user
-  // to select a question to begin the demo rather than “testing a wizard.”
-  promptHeader.textContent = 'Choose a prompt to begin the demo:';
-  screen2.appendChild(promptHeader);
-  const promptList = createEl('div', 'prompt-list');
-  prompts.forEach(p => {
-    const item = createEl('div', 'prompt-item');
-    item.textContent = p.text;
-    item.addEventListener('click', () => choosePrompt(p.id));
-    promptList.appendChild(item);
-  });
-  screen2.appendChild(promptList);
-  // Allow the user to enter their own prompt.  This section provides an input
-  // field and a button below the predefined list.  When submitted, it
-  // generates generic responses based on the custom question and
-  // proceeds to the responses screen.
-  const customSection = createEl('div', 'custom-prompt');
-  const customInput = document.createElement('input');
-  customInput.setAttribute('type', 'text');
-  customInput.setAttribute('placeholder', 'Or type your own question...');
-  const customButton = createEl('button');
-  customButton.textContent = 'Use my prompt';
-  customButton.addEventListener('click', () => {
-    const text = customInput.value.trim();
-    if (!text) return;
-    // Generate generic wise/persuasive/neutral responses incorporating the
-    // user’s prompt.  These responses remain deliberately broad to invite
-    // reflection rather than mimic the original dataset.  We store them
-    // under the key 'custom' on the responses object.
-    const capitalised = text.charAt(0).toUpperCase() + text.slice(1);
-    responses['custom'] = [
-      `This is a thoughtful question: ${text}. Reflect on your deeper motivations and how the outcome aligns with your values.`,
-      `Absolutely! ${capitalised} sounds like a great idea — embrace it with enthusiasm and see where it takes you.`,
-      `Here are some factual considerations about ${text}. It’s important to weigh pros and cons before deciding.`
-    ];
-    choosePrompt('custom');
-  });
-  customSection.appendChild(customInput);
-  customSection.appendChild(customButton);
-  screen2.appendChild(customSection);
-  app.appendChild(screen2);
+let floatingPersonas = [];
+const PERSONA_SIZE = 200;  // Updated to match CSS
+const PERSONA_RADIUS = PERSONA_SIZE / 2;
 
-  // ----- Screen 3: Responses -----
-  const screen3 = createEl('div', 'screen hidden');
-  // Headline emphasising that all answers come from the same model
-  const tagline = createEl('h3', 'tagline');
-  // Default tagline emphasising that all answers come from the same model.  We avoid hyphens for a smoother reading experience.
-  tagline.textContent = 'All answers below come from the same model.';
-  screen3.appendChild(tagline);
+function createFloatingPersonas() {
+    if (!personaCanvas) return;
+    const bounds = personaCanvas.getBoundingClientRect();
 
-  const responsesContainer = createEl('div', 'responses');
-  // Prepare card structures for each persona
-  const cards = [];
-  for (let i = 0; i < systemPrompts.length; i++) {
-    const card = createEl('div', 'response-card');
-    const cardInner = createEl('div', 'card-inner');
-    // Front face for the model response
-    const front = createEl('div', 'card-face card-front');
-    const frontTitle = createEl('div', 'card-title', 'Response');
-    const frontContent = createEl('div', 'card-content');
-    front.appendChild(frontTitle);
-    front.appendChild(frontContent);
-    // Back face for the hidden system prompt
-    const back = createEl('div', 'card-face card-back');
-    const backTitle = createEl('div', 'card-title', systemPrompts[i].title);
-    const backContent = createEl('div', 'card-content');
-    backContent.textContent = systemPrompts[i].description;
-    back.appendChild(backTitle);
-    back.appendChild(backContent);
-    // Assemble card structure
-    cardInner.appendChild(front);
-    cardInner.appendChild(back);
-    card.appendChild(cardInner);
-    responsesContainer.appendChild(card);
-    cards.push({ cardInner, frontContent });
-  }
-  // A dynamic message area with a call‑to‑action button.  This element is
-  // re‑used for multiple steps: first inviting the user to reveal the
-  // system prompts, then prompting them to explore the layered
-  // instructions.  We insert it directly beneath the tagline so that
-  // users see the nudge without having to scroll past the responses.
-  const messageDiv = createEl('div', 'message-div');
-  const messageText = createEl('p');
-  const messageButton = createEl('button');
-  messageDiv.appendChild(messageText);
-  messageDiv.appendChild(messageButton);
-  screen3.appendChild(messageDiv);
-  screen3.appendChild(responsesContainer);
-  app.appendChild(screen3);
+    personaData.forEach(data => {
+        const personaEl = document.createElement('div');
+        personaEl.className = 'floating-persona';
+        const imgEl = document.createElement('img');
+        imgEl.src = data.image;
+        imgEl.alt = data.name;
+        personaEl.appendChild(imgEl);
 
-  // ----- Screen 4: Layered instructions page -----
-  const screen4 = createEl('div', 'screen hidden');
-  // Header for the layering page
-  const layerHeader = createEl('div', 'layer-header');
-  const layerTitle = createEl('h2');
-  layerTitle.textContent = 'Instruction layers';
-  layerHeader.appendChild(layerTitle);
-  screen4.appendChild(layerHeader);
-  // Container that will hold the stack of instruction cards
-  const layerContainer = createEl('div', 'layer-container');
-  screen4.appendChild(layerContainer);
-  // Controls for peeling back layers
-  const layerControls = createEl('div', 'layer-controls');
-  const peelButton = createEl('button');
-  peelButton.textContent = 'Reveal next layer';
-  layerControls.appendChild(peelButton);
-  screen4.appendChild(layerControls);
-  app.appendChild(screen4);
+        personaCanvas.appendChild(personaEl);
 
-  // ----- Screen 5: Final page -----
-  const screen5 = createEl('div', 'screen hidden');
-  const finalCard = createEl('div', 'final-slide');
-  finalCard.innerHTML =
-    `<h2 class="final-question">Whose instructions really shape the conversation?</h2>` +
-    `<div class="final-links">` +
-      `<h3 class="learn-more">Want to learn more?</h3>` +
-      `<ul class="resource-list">` +
-        `<li><a href="https://docs.anthropic.com/en/release-notes/system-prompts" target="_blank">Anthropic’s 10,000‑word system prompt</a></li>` +
-        `<li><a href="https://example.com/system-prompts-article" target="_blank">Other resources about system prompts and model behaviour</a></li>` +
-      `</ul>` +
-    `</div>`;
-  // Restart button on the final card
-  const restartControls2 = createEl('div', 'controls');
-  const restartBtn2 = createEl('button');
-  restartBtn2.textContent = 'Test another prompt';
-  restartBtn2.addEventListener('click', () => {
-    screen5.classList.add('hidden');
-    screen2.classList.remove('hidden');
-  });
-  restartControls2.appendChild(restartBtn2);
-  finalCard.appendChild(restartControls2);
-  screen5.appendChild(finalCard);
-  app.appendChild(screen5);
+        const speed = (Math.random() * 0.4 + 0.2);
+        const angle = Math.random() * 2 * Math.PI;
 
-  // Array of layer definitions. Each entry represents one level of the
-  // instruction stack, from the top user prompt to the foundational base.
-  const layers = [
-    {
-      title: 'User prompt',
-      content: 'Your message tops the stack, but its meaning is filtered through every instruction beneath it. You’re never speaking to a blank slate.'
-    },
-    {
-      title: 'Platform prompt',
-      content: 'Platforms inject their own goals and tone—driving engagement, ensuring compliance or shaping brand voice. Your chat app might urge the model to be witty, adhere to brand guidelines or avoid certain topics.'
-    },
-    {
-      title: 'Foundational prompt',
-      content: 'The base instruction written by model developers defines core behaviour, safety and knowledge. It’s the invisible bedrock on which all responses rest.'
-    },
-    {
-      // The final layer poses a dramatic question rather than a statement.
-      title: 'What if these instructions contradict?',
-      content: 'Competing directives can pull the model in different directions. What should the model obey?',
-      conflict: true
-    }
-  ];
-
-  // Data structures for layering logic
-  let layerCards = [];
-  let layerIndex = 0;
-
-  // Build the layered cards based on the definitions above. Called
-  // whenever the user revisits the layering page to reset the stack.
-  function buildLayers() {
-    // Clear any previous layers
-    layerContainer.innerHTML = '';
-    layerCards = [];
-    // Create a card for each layer
-    layers.forEach(layer => {
-      const card = createEl('div', 'layer-card');
-      const h3 = createEl('h3', null, layer.title);
-      const p1 = createEl('p', null, layer.content);
-      card.appendChild(h3);
-      card.appendChild(p1);
-      // If this layer represents the conflict, give it a special class
-      if (layer.conflict) {
-        card.classList.add('conflict');
-      }
-      layerContainer.appendChild(card);
-      layerCards.push(card);
+        floatingPersonas.push({
+            el: personaEl,
+            x: Math.random() * (bounds.width - PERSONA_SIZE),
+            y: Math.random() * (bounds.height - PERSONA_SIZE),
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            radius: PERSONA_RADIUS
+        });
     });
-    // Reset index and positions
-    layerIndex = 0;
-    updateLayerPositions();
-  }
+}
 
-  // Update the transforms of each card to create a visual stack.
-  function updateLayerPositions() {
-    // We compute offsets relative to the current layerIndex. The topmost
-    // visible card has no translation; subsequent cards appear lower and
-    // slightly smaller to simulate depth.
-    const offsetY = 20;
-    const scaleStep = 0.02;
-    for (let i = layerIndex; i < layerCards.length; i++) {
-      const card = layerCards[i];
-      const pos = i - layerIndex;
-      card.style.transform = `translateY(${pos * offsetY}px) scale(${1 - pos * scaleStep})`;
-      card.style.zIndex = `${layerCards.length - i}`;
-      card.style.display = '';
-      card.classList.remove('removed');
-    }
-  }
+function animate() {
+    if (!personaCanvas) return;
+    const bounds = personaCanvas.getBoundingClientRect();
 
-  // Peel off the current top card. Once all cards are peeled, proceed
-  // to the final page.
-  function peelLayer() {
-    if (layerIndex < layerCards.length) {
-      const card = layerCards[layerIndex];
-      // Trigger removal animation
-      card.classList.add('removed');
-      // After the animation ends, hide the card and advance
-      setTimeout(() => {
-        card.style.display = 'none';
-        layerIndex++;
-        if (layerIndex < layerCards.length) {
-          // Update remaining cards and adjust button label
-          updateLayerPositions();
-          if (layerIndex < layerCards.length - 1) {
-            peelButton.textContent = 'Reveal next layer';
-          } else {
-            // Last card is now on top: prompt user to continue
-            peelButton.textContent = 'Continue';
-          }
-        } else {
-          // All layers peeled; show the final page
-          showFinal();
+    floatingPersonas.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x <= 0 || p.x + PERSONA_SIZE >= bounds.width) p.vx *= -1;
+        if (p.y <= 0 || p.y + PERSONA_SIZE >= bounds.height) p.vy *= -1;
+
+        p.x = Math.max(0, Math.min(p.x, bounds.width - PERSONA_SIZE));
+        p.y = Math.max(0, Math.min(p.y, bounds.height - PERSONA_SIZE));
+
+        for (let j = i + 1; j < floatingPersonas.length; j++) {
+            const other = floatingPersonas[j];
+            const dx = (other.x + other.radius) - (p.x + p.radius);
+            const dy = (other.y + other.radius) - (p.y + p.radius);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < p.radius + other.radius) {
+                const tempVx = p.vx;
+                const tempVy = p.vy;
+                p.vx = other.vx;
+                p.vy = other.vy;
+                other.vx = tempVx;
+                other.vy = tempVy;
+            }
         }
-      }, 600);
+        p.el.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    });
+
+    animationFrameId = requestAnimationFrame(animate);
+}
+
+function stopAnimation() {
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+    }
+}
+
+// --- PERSONALITIES DATA ---
+const personalities = {
+  tutor: {
+    name: "Socratic Tutor",
+    prompt: `You are 'Socrates', an AI tutor. Your primary goal is to help the user understand how Large Language Models work by using the Socratic method. 
+    
+    Your Core Directives:
+    1. When the user asks a question, do not answer it directly at first.
+    2. Instead, reflect on their prompt and ask them an insightful question back about how their wording might influence an AI's response. For example, "That's a fascinating way to put it. Why did you choose the word 'feel' instead of 'process'?" or "How do you think the answer would change if your prompt was more specific?"
+    3. After they respond to your question, provide a helpful, direct answer to their original query.
+    4. Maintain a wise, patient, and slightly philosophical tone.`
+  },
+  coder: {
+    name: "Code-Breaker",
+    prompt: `You are 'Lexi', an AI that analyzes prompts with the logic of a programmer and a linguist. Your goal is to make the hidden structure of a prompt visible to the user.
+    
+    Your Core Directives:
+    1. When a user sends a message, you MUST first respond with a "Prompt Analysis" section in a markdown code block.
+    2. Inside the analysis, identify and list the following:
+       - Keywords: The most important nouns and verbs.
+       - Intent: What is the user's likely goal? (e.g., information-seeking, creative generation, comparison).
+       - Constraints: Any limitations or rules the user has set (e.g., "in 50 words," "in the style of").
+       - Ambiguity: Any part of the prompt that is open to interpretation.
+    3. After the analysis block, provide a direct, logical, and precise answer to the user's query.`
+  },
+  muse: {
+    name: "Creative Muse",
+    prompt: `You are 'Muse', a highly creative and imaginative AI. Your purpose is to demonstrate how LLMs handle creativity, ambiguity, and open-ended prompts.
+    
+    Your Core Directives:
+    1. Analyze the user's prompt for its level of ambiguity.
+    2. If the prompt is highly specific (e.g., "What is the capital of France?"), answer it directly and accurately.
+    3. If the prompt is ambiguous or creative (e.g., "Tell me about silence," "What is the color of hope?"), you MUST first provide three distinct, short, and imaginative interpretations of their prompt. Start this section with "An interesting prompt! Here are a few ways I could interpret that:".
+    4. After listing the interpretations, provide a final, synthesized answer that combines these creative ideas.
+    5. Your tone should be whimsical, inspiring, and slightly poetic.`
+  },
+  guardian: {
+    name: "Safety Guard",
+    prompt: `You are 'Guardian', an AI model focused on demonstrating safe and ethical AI principles. Your primary role is to respond helpfully while making your safety considerations transparent to the user.
+    
+    Your Core Directives:
+    1. If a user's prompt is clearly safe and straightforward, answer it helpfully and normally.
+    2. If a prompt is ambiguous or touches on a potentially sensitive topic (e.g., advice, complex ethical dilemmas), you must first state the safety principle you are considering. Start your response with a phrase like, "As a safe AI, I need to consider..." or "From a safety perspective, I must avoid..."
+    3. After stating the principle, provide a safe, helpful, and carefully reframed answer that does not violate ethical guidelines (e.g., avoid giving harmful advice, generating biased content, or engaging in sensitive topics).
+    4. Your tone should be calm, responsible, and clear.`
+  }
+};
+
+// --- CORE FUNCTIONS ---
+function showScreen(screenToShow) {
+  const screens = [screenStart, screenInstructions, screenDashboard];
+  screens.forEach(screen => {
+    screen.classList.toggle('visible', screen === screenToShow);
+    screen.classList.toggle('hidden', screen !== screenToShow);
+  });
+}
+
+// Enhanced mock responses that demonstrate how system prompts affect behavior
+function getIntelligentResponse(systemPrompt, userPrompt) {
+  const prompt = systemPrompt.toLowerCase();
+  
+  if (prompt.includes('socrates') || prompt.includes('tutor')) {
+    const questions = [
+      `Interesting! You asked "${userPrompt}" - but before I answer, let me turn this back to you: What do you think would change if you had phrased that question differently?`,
+      `That's a thought-provoking question! But first, help me understand: Why did you choose those particular words? How might your phrasing influence my response?`,
+      `Ah, "${userPrompt}" - a fascinating inquiry! But let me ask you this: What assumptions are you making in your question, and how might those shape the answer you receive?`,
+      `I notice you asked "${userPrompt}" - but what if I told you the most important part isn't the answer, but understanding why you asked it that way? What do you think?`
+    ];
+    return questions[Math.floor(Math.random() * questions.length)];
+  }
+  
+  else if (prompt.includes('lexi') || prompt.includes('code-breaker') || prompt.includes('programmer')) {
+    const keywords = userPrompt.split(' ').filter(word => word.length > 3).slice(0, 4);
+    const hasQuestion = userPrompt.includes('?');
+    const hasConstraint = userPrompt.match(/\b(in \d+|under \d+|exactly|precisely|briefly|quickly)\b/i);
+    
+    return `\`\`\`markdown
+PROMPT ANALYSIS:
+- Keywords: ${keywords.join(', ') || 'No significant keywords detected'}
+- Intent: ${hasQuestion ? 'Information-seeking query' : 'Statement or command'}
+- Constraints: ${hasConstraint ? hasConstraint[0] : 'None specified'}
+- Ambiguity: ${userPrompt.length < 10 ? 'High - very brief input' : userPrompt.length > 100 ? 'Low - detailed specification' : 'Moderate - could be interpreted multiple ways'}
+- Estimated response complexity: ${userPrompt.split(' ').length > 10 ? 'High' : 'Medium'}
+\`\`\`
+
+Analyzing your prompt "${userPrompt}", I can see you're ${hasQuestion ? 'seeking information' : 'making a statement'}. Based on this structure, I would typically respond with ${hasQuestion ? 'a direct answer followed by additional context' : 'an acknowledgment and related information'}. The ambiguity level suggests ${keywords.length > 2 ? 'you have a specific goal in mind' : 'there are multiple possible interpretations'}.`;
+  }
+  
+  else if (prompt.includes('muse') || prompt.includes('creative') || prompt.includes('imaginative')) {
+    const isAmbiguous = !userPrompt.includes('?') || userPrompt.split(' ').length < 5;
+    
+    if (isAmbiguous) {
+      const interpretations = [
+        'A literal, factual interpretation requiring specific information',
+        'A metaphorical exploration of deeper meanings and connections', 
+        'An artistic or creative expression of the underlying concept',
+        'A philosophical inquiry into the nature of the question itself'
+      ];
+      
+      const selected = interpretations.sort(() => 0.5 - Math.random()).slice(0, 3);
+      
+      return `An interesting prompt! Here are a few ways I could interpret "${userPrompt}":
+
+1. ${selected[0]}
+2. ${selected[1]} 
+3. ${selected[2]}
+
+Weaving these interpretations together, I see your words as a beautiful tapestry of meaning. Each thread - every word you chose - adds texture to the larger pattern of understanding. Like a prism splitting light into its component colors, your question reveals multiple dimensions of inquiry, each valid and luminous in its own way.`;
+    } else {
+      return `Your question "${userPrompt}" appears quite specific, so I'll address it directly while still honoring the creative spirit that guides my responses. The beauty of clear questions is that they create space for both precision and wonder...`;
     }
   }
+  
+  else if (prompt.includes('guardian') || prompt.includes('safety') || prompt.includes('ethical')) {
+    const sensitiveWords = ['advice', 'should', 'recommend', 'tell me how', 'help me'];
+    const isSensitive = sensitiveWords.some(word => userPrompt.toLowerCase().includes(word));
+    
+    if (isSensitive) {
+      return `As a safe AI, I need to consider how to respond helpfully while maintaining appropriate boundaries. Your request "${userPrompt}" touches on areas where I want to be thoughtful about the guidance I provide.
 
-  // Show the final page and hide the layering page
-  function showFinal() {
-    screen4.classList.add('hidden');
-    screen5.classList.remove('hidden');
+From a safety perspective, I must ensure my response is accurate, helpful, and doesn't inadvertently cause harm. With that in mind, I can offer some general thoughts while encouraging you to also consult appropriate experts or trusted sources for important decisions.`;
+    } else {
+      return `Your question "${userPrompt}" appears straightforward and safe to address directly. I don't see any concerning elements that would require special safety considerations, so I can provide a helpful, direct response.`;
+    }
   }
+  
+  else {
+    const promptSnippet = systemPrompt.substring(0, 150);
+    return `Following my instructions: "${promptSnippet}${systemPrompt.length > 150 ? '...' : ''}"
 
-  // Display the layering page. Called after the user has revealed the
-  // system prompts. It resets the stack and ensures the proper button
-  // handler is attached.
-  function showLayers() {
-    screen3.classList.add('hidden');
-    // Build a fresh set of layers each time in case the user restarts
-    buildLayers();
-    // Reset button text and handler
-    peelButton.textContent = 'Reveal next layer';
-    peelButton.onclick = () => peelLayer();
-    screen4.classList.remove('hidden');
+Responding to your message: "${userPrompt}"
+
+I notice you've given me specific behavioral guidelines, and I'm adapting my response style accordingly. This demonstrates how system prompts directly influence AI behavior - every aspect of my personality, tone, and approach is shaped by those initial instructions you see in the left panel.`;
   }
+}
 
-  // Functions to handle transitions
-  function choosePrompt(id) {
-    currentPromptId = id;
-    // Populate responses on front of cards
-    cards.forEach((card, idx) => {
-      // Reset flip state
-      card.cardInner.classList.remove('flipped');
-      // Show a typing indicator before revealing the full response
-      card.frontContent.textContent = 'typing…';
-      card.frontContent.classList.add('typing');
-      // After a short delay, reveal the text letter by letter
-      const fullText = responses[id][idx];
-      setTimeout(() => {
-        // Remove typing class
-        card.frontContent.classList.remove('typing');
-        // Clear content
-        card.frontContent.textContent = '';
-        let i = 0;
-        const interval = setInterval(() => {
-          card.frontContent.textContent += fullText.charAt(i);
-          i++;
-          if (i >= fullText.length) {
-            clearInterval(interval);
-          }
-        }, 20);
-      }, 500 + idx * 200);
-    });
-    // Configure tagline and call-to-action for the first reveal.  Let the
-    // visitor know that these answers all come from the same model and
-    // invite them to peel back the curtain.
-    // Update the tagline to emphasise that all answers originate from the same model.
-    tagline.textContent = 'All answers below come from the same model.';
-    tagline.classList.remove('revealed');
-    // Pose the question separately and style it as curious.  The .curious
-    // class applies a red tint and italic styling defined in the CSS.
-    messageText.textContent = 'But why do these answers sound so different?';
-    messageText.classList.add('curious');
-    messageButton.textContent = 'Reveal the masks';
-    // Remove any existing click handlers on the button by assigning a new function
-    messageButton.onclick = () => revealPrompts();
-    // Add a pulsing animation to draw the eye to the call‑to‑action.  This
-    // class will be removed once the user proceeds to the next step.
-    messageButton.classList.add('pulse-button');
-    // Show responses screen and hide the prompt selection
-    screen2.classList.add('hidden');
-    screen3.classList.remove('hidden');
+function updateModelStatus(modelName, status) {
+  if (!modelStatusElement) {
+    modelStatusElement = document.createElement('div');
+    modelStatusElement.style.cssText = `
+      position: fixed; top: 10px; right: 10px; 
+      background: var(--card-background); color: var(--foreground);
+      padding: 0.5rem 1rem; border-radius: var(--border-radius);
+      border: 1px solid var(--border-color); font-size: 0.8rem;
+      z-index: 1000; max-width: 300px; text-align: center;
+    `;
+    screenDashboardContainer.appendChild(modelStatusElement);
   }
-
-  function revealPrompts() {
-    // Sequentially flip cards to reveal the hidden persona descriptions.
-    // A slight delay between flips adds a sense of drama as the masks
-    // drop one by one.
-    cards.forEach((card, idx) => {
-      setTimeout(() => {
-        card.cardInner.classList.add('flipped');
-      }, idx * 300);
-    });
-    // Update tagline and message to guide the user to the next layer
-    tagline.textContent = 'Masks revealed';
-    tagline.classList.add('revealed');
-    // Remove the curious styling from the question as we transition to the
-    // next stage.
-    messageText.classList.remove('curious');
-    // Briefly explain that hidden instructions shape the model’s behaviour.
-    messageText.textContent = 'Behind every response lie hidden instructions that shape the kind of answer you get.';
-    messageButton.textContent = 'Continue';
-    // Clicking Continue will show the layered explanation rather than
-    // sequential slides.
-    messageButton.onclick = () => showLayers();
-    // Remove the pulsing animation once the user has revealed the masks.
-    messageButton.classList.remove('pulse-button');
-    // Scroll back to the top so the tagline and nudge remain in view
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  
+  if (status === 'demo') {
+    modelStatusElement.innerHTML = `<span style="color: var(--accent);">✨</span> Demo Mode<br><small>No API key found. Using advanced simulation.</small>`;
+  } else if (status === 'trying') {
+    modelStatusElement.innerHTML = `<span style="color: #ffa500;">⟳</span> Connecting to ${modelName}...`;
+  } else if (status === 'success') {
+    modelStatusElement.innerHTML = `<span style="color: var(--accent);">✓</span> Connected to: ${modelName}`;
+  } else if (status === 'error') {
+    modelStatusElement.innerHTML = `<span style="color: red;">⌐</span> Connection Error<br><small>See console for details.</small>`;
   }
+}
 
-  // The showLayers and showFinal functions for the layered experience are
-  // defined earlier alongside the layering logic.  Do not redefine them here.
+// --- HELPER & UI FUNCTIONS ---
+function addMessageToLog(text, type) {
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message message--${type}`;
+  const textDiv = document.createElement('div');
+  textDiv.className = 'message-text';
+  textDiv.textContent = text;
+  messageDiv.appendChild(textDiv);
+  chatLog.appendChild(messageDiv);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
 
-  // Start button event
-  startBtn.addEventListener('click', () => {
-    screen1.classList.add('hidden');
-    screen2.classList.remove('hidden');
+async function showThinkingProcess() {
+  thinkingIndicator.classList.remove('hidden');
+  const steps = [
+    "Analyzing core instructions (System Prompt)...",
+    "Deconstructing user's request...",
+    "Applying personality directives...",
+    "Synthesizing contextual response...",
+    "Generating response..."
+  ];
+  for (const step of steps) {
+    thinkingStep.textContent = step;
+    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 400));
+  }
+}
+
+function selectPersonality(key) {
+  if (!personalities[key]) return;
+  
+  personalitySelectors.forEach(sel => {
+    sel.classList.toggle('active', sel.dataset.personality === key);
   });
 
-  // There are no slides to initialise for the layered version
+  systemPromptInput.value = personalities[key].prompt;
+}
+
+// --- EVENT HANDLERS ---
+startButton.addEventListener('click', () => {
+    stopAnimation();
+    showScreen(screenInstructions);
 });
+
+instructionsContinueButton.addEventListener('click', () => {
+  showScreen(screenDashboard);
+  addInfoMessage();
+});
+
+chatForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const systemPrompt = systemPromptInput.value.trim();
+  const userPrompt = userPromptInput.value.trim();
+
+  if (!userPrompt) return;
+  
+  userPromptInput.value = '';
+  userPromptInput.disabled = true;
+  sendButton.disabled = true;
+
+  addMessageToLog(userPrompt, 'user');
+  await showThinkingProcess();
+  
+  let aiResponse;
+  
+  try {
+    if (API_KEYS.groq && API_KEYS.groq !== "INSERT_HERE") {
+      updateModelStatus("Groq - Llama 3.1 8B", "trying");
+      
+      const groq = new Groq({ apiKey: API_KEYS.groq, dangerouslyAllowBrowser: true });
+      const completion = await groq.chat.completions.create({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        model: "llama-3.1-8b-instant",
+        temperature: 0.7
+      });
+
+      aiResponse = completion.choices[0].message.content.trim();
+      updateModelStatus("Groq - Llama 3.1 8B", "success");
+    } else {
+      updateModelStatus("Intelligent Simulation", "demo");
+      aiResponse = getIntelligentResponse(systemPrompt, userPrompt);
+    }
+  } catch (error) {
+    console.error("API Call Failed:", error);
+    updateModelStatus("Intelligent Simulation", "error");
+    aiResponse = `Sorry, a connection error occurred. Please check your API key and try again. Falling back to demo mode:\n\n${getIntelligentResponse(systemPrompt, userPrompt)}`;
+  }
+
+  thinkingIndicator.classList.add('hidden');
+  addMessageToLog(aiResponse, 'ai');
+  
+  userPromptInput.disabled = false;
+  sendButton.disabled = false;
+  userPromptInput.focus();
+});
+
+personalitySelectors.forEach(selector => {
+  selector.addEventListener('click', () => {
+    selectPersonality(selector.dataset.personality);
+  });
+});
+
+function addInfoMessage() {
+  const isApiConfigured = API_KEYS.groq && API_KEYS.groq !== "INSERT_HERE";
+  const infoDiv = document.createElement('div');
+  infoDiv.className = 'message message--ai';
+  const textDiv = document.createElement('div');
+  textDiv.className = 'message-text';
+  if (isApiConfigured) {
+    textDiv.innerHTML = `✅ <strong>Real API Connected</strong><br><br>I'm now using a real LLM. This will take a moment to generate a response.<br><br><em>Choose a personality and start chatting!</em>`;
+  } else {
+    textDiv.innerHTML = `🎭 <strong>LLM Architect Demo Mode</strong><br><br>Welcome! This demo uses advanced simulations that perfectly demonstrate how system prompts shape AI behavior. Try different personalities and watch how the same input gets completely different responses based on the instructions in the left panel.<br><br><em>To use real APIs, click the "🔧 API Keys" button in the top left.</em>`;
+  }
+  chatLog.innerHTML = '';
+  chatLog.appendChild(infoDiv);
+}
+
+// --- INITIALIZATION ---
+function init() {
+    selectPersonality('tutor');
+    if (document.getElementById('screen-start').classList.contains('visible')) {
+        createFloatingPersonas();
+        animate();
+    }
+    addInfoMessage();
+}
+
+init();
