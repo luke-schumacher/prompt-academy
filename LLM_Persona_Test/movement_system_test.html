@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Character Movement</title>
+    <style>
+        /* Basic styles to make the canvas fill the screen and remove scrollbars */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+        }
+        canvas {
+            display: block;
+            background-color: #87CEEB; /* A nice sky-blue background */
+        }
+    </style>
+</head>
+<body>
+    <!-- The canvas is where the game will be drawn -->
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // --- Canvas Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas to full screen
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Adjust canvas size when the window is resized
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // --- Game Variables & Player Setup ---
+        const player = {
+            x: 200,
+            y: 200,
+            // Original sprite sheet is 656x972, with 4 columns and 4 rows.
+            // So, each frame is 656/4 = 164px wide and 972/4 = 243px tall.
+            spriteWidth: 164,
+            spriteHeight: 243,
+            width: 164,      // Display width
+            height: 243,     // Display height
+            frameX: 0,       // Current frame in the animation sequence (0-3)
+            frameY: 0,       // Current row in the sprite sheet for direction
+            speed: 6,        // Movement speed in pixels per frame
+            moving: false,
+        };
+
+        // --- Image Loading ---
+        const playerImage = new Image();
+        // IMPORTANT: The user uploaded a JPG, so we use .jpg here.
+        // If your local file is a PNG, change this to "walking character_Finn.png"
+        playerImage.src = 'walking_character_Finn.png';
+
+        // --- Input Handling ---
+        const keys = {
+            w: false,
+            a: false,
+            s: false,
+            d: false
+        };
+
+        // Listen for key presses
+        window.addEventListener("keydown", (e) => {
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) {
+                keys[key] = true;
+                player.moving = true;
+            }
+        });
+
+        // Listen for key releases
+        window.addEventListener("keyup", (e) => {
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) {
+                keys[key] = false;
+            }
+            // If no movement keys are pressed, set moving to false
+            if (!keys.w && !keys.a && !keys.s && !keys.d) {
+                player.moving = false;
+            }
+        });
+
+        // --- Helper Functions ---
+
+        // Function to draw the player character
+        function drawPlayer() {
+            // ctx.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+            // sx, sy, sWidth, sHeight: The portion of the source image to draw.
+            // dx, dy, dWidth, dHeight: Where to draw the image on the canvas.
+            ctx.drawImage(
+                playerImage,
+                player.frameX * player.spriteWidth,
+                player.frameY * player.spriteHeight,
+                player.spriteWidth,
+                player.spriteHeight,
+                player.x,
+                player.y,
+                player.width,
+                player.height
+            );
+        }
+
+        // Function to update player's position based on key presses
+        function updatePlayerPosition() {
+            if (keys.w) {
+                // Move up
+                player.y -= player.speed;
+                player.frameY = 3; // 4th row for 'up' animation
+            }
+            if (keys.s) {
+                // Move down
+                player.y += player.speed;
+                player.frameY = 0; // 1st row for 'down' animation
+            }
+            if (keys.a) {
+                // Move left
+                player.x -= player.speed;
+                player.frameY = 2; // 3rd row for 'left' animation
+            }
+            if (keys.d) {
+                // Move right
+                player.x += player.speed;
+                player.frameY = 1; // 2nd row for 'right' animation
+            }
+        }
+
+        // Function to handle the animation frames
+        let frameCounter = 0;
+        const animationSpeed = 8; // Update frame every 8 game loops
+
+        function handlePlayerAnimation() {
+            if (player.moving) {
+                frameCounter++;
+                if (frameCounter >= animationSpeed) {
+                    frameCounter = 0;
+                    // Cycle through frames 0, 1, 2, 3
+                    player.frameX = (player.frameX + 1) % 4;
+                }
+            } else {
+                // Reset to standing frame when not moving
+                player.frameX = 0;
+            }
+        }
+        
+        // Function to keep the player within the canvas bounds
+        function enforceScreenBounds() {
+            if (player.x < 0) {
+                player.x = 0;
+            }
+            if (player.x + player.width > canvas.width) {
+                player.x = canvas.width - player.width;
+            }
+            if (player.y < 0) {
+                player.y = 0;
+            }
+            if (player.y + player.height > canvas.height) {
+                player.y = canvas.height - player.height;
+            }
+        }
+
+
+        // --- Main Game Loop ---
+        function gameLoop() {
+            // 1. Clear the canvas from the previous frame
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Update game state
+            updatePlayerPosition();
+            handlePlayerAnimation();
+            enforceScreenBounds();
+
+            // 3. Draw everything
+            drawPlayer();
+
+            // 4. Request the next frame to create the loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- Start the Game ---
+        // We wait for the player image to load before starting the game loop
+        // to prevent errors trying to draw an image that doesn't exist yet.
+        playerImage.onload = () => {
+            // Center the player initially
+            player.x = (canvas.width / 2) - (player.width / 2);
+            player.y = (canvas.height / 2) - (player.height / 2);
+            gameLoop();
+        };
+
+        playerImage.onerror = () => {
+             console.error("Error: Could not load the character image. Make sure the file 'walking character_Finn.jpg' is in the same directory as this HTML file.");
+             // Draw a placeholder rectangle if the image fails to load
+             ctx.fillStyle = 'red';
+             ctx.fillRect(player.x, player.y, player.width, player.height);
+             ctx.fillStyle = 'white';
+             ctx.textAlign = 'center';
+             ctx.fillText("Image not found", player.x + player.width/2, player.y + player.height/2);
+        }
+    </script>
+</body>
+</html>

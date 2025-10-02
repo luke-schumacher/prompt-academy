@@ -10,7 +10,7 @@
     <script type="module">
         // This is a browser-based prototype, so we need to tell the Groq SDK it's okay to run here.
         // In a real production app, API calls should be made from a secure backend server.
-        window.process = { env: { GROQ_API_KEY: "" } };
+        window.process = { env: { GROQ_API_KEY: "nope" } };
     </script>
     <style>
         :root {
@@ -422,7 +422,7 @@
     <script type="module">
         import Groq from "https://esm.sh/groq-sdk";
 
-        const API_KEY = "gsk_..."; // IMPORTANT: Replace "gsk_..." with your actual Groq API key
+        const API_KEY = "nope"; // IMPORTANT: Replace "gsk_..." with your actual Groq API key
 
         const elements = {
             mainContainer: document.getElementById('main-container'),
