@@ -70,10 +70,37 @@
         const API_KEY = "nope"; // IMPORTANT: Replace with your Groq API key
         let groq;
 
+        // --- Character Configuration ---
+        const PLAYER_SPEED = 1; // Control player movement speed
+        const PLAYER_DISPLAY_WIDTH = 50; // Control the character's rendered width
+        const PLAYER_DISPLAY_HEIGHT = 74; // Control the character's rendered height
+        
+        const RATIO_DISPLAY_WIDTH = 35;  // Control Ratio's rendered width
+        const RATIO_DISPLAY_HEIGHT = 37; // Control Ratio's rendered height
+
         // --- Game State and Configuration ---
         const gameState = {
-            player: { x: 385, y: 700, width: 30, height: 40, speed: 4, color: '#FFFFFF' },
-            ratio: { x: 385, y: 750, width: 25, height: 25, speed: 3.5, color: '#B0B0B0', followDistance: 60 },
+            player: { 
+                x: 385, 
+                y: 700, 
+                spriteWidth: 164, 
+                spriteHeight: 243,
+                width: PLAYER_DISPLAY_WIDTH, 
+                height: PLAYER_DISPLAY_HEIGHT,
+                frameX: 0, 
+                frameY: 0, 
+                speed: PLAYER_SPEED, 
+                moving: false 
+            },
+            ratio: { 
+                x: 385, 
+                y: 750, 
+                width: RATIO_DISPLAY_WIDTH, 
+                height: RATIO_DISPLAY_HEIGHT, 
+                speed: 2.8, 
+                followDistance: 80,
+                direction: 'right' // Can be 'left' or 'right'
+            },
             keys: { w: false, a: false, s: false, d: false },
             collectedComponents: {
                 stabilizer: false,
@@ -108,9 +135,15 @@
 
         // --- Asset Loading ---
         const backgroundImage = new Image();
-        let backgroundLoaded = false;
-        backgroundImage.onload = () => { backgroundLoaded = true; };
+        const playerImage = new Image();
+        const ratioImageR = new Image();
+        const ratioImageL = new Image();
+        
         backgroundImage.src = 'retro_background.png';
+        playerImage.src = 'walking_character_Finn.png'; // Updated filename
+        ratioImageR.src = 'Ratio_R.png';
+        ratioImageL.src = 'Ratio_L.png';
+
 
         // --- AI Persona ---
         const groundskeeperPersona = {
@@ -274,12 +307,21 @@
                 startDialogue("System", "Prompt uploaded! Chrono-Bloom is stable.");
                 return;
             }
-            if (gameState.keys.hasOwnProperty(key)) gameState.keys[key] = true;
+            if (gameState.keys.hasOwnProperty(key)) {
+                gameState.keys[key] = true;
+                gameState.player.moving = true;
+            }
             if (key === 'e') handleInteraction();
         });
+
         window.addEventListener('keyup', (e) => {
             const key = e.key.toLowerCase();
-            if (gameState.keys.hasOwnProperty(key)) gameState.keys[key] = false;
+            if (gameState.keys.hasOwnProperty(key)) {
+                gameState.keys[key] = false;
+            }
+             if (!gameState.keys.w && !gameState.keys.a && !gameState.keys.s && !gameState.keys.d) {
+                gameState.player.moving = false;
+            }
         });
         
         // --- Collision Logic ---
@@ -292,15 +334,19 @@
         // --- Game Loop ---
         function update() {
             if (gameState.inPromptBuilderMode || gameState.activeDialogue.isActive) return;
+            
+            // Player Movement
             const { player, ratio, keys } = gameState;
-            let nextX = player.x, nextY = player.y;
-            if (keys.w) nextY -= player.speed;
-            if (keys.s) nextY += player.speed;
-            if (keys.a) nextX -= player.speed;
-            if (keys.d) nextX += player.speed;
-            player.x = Math.max(0, Math.min(canvas.width - player.width, nextX));
-            player.y = Math.max(0, Math.min(canvas.height - player.height, nextY));
+            if (keys.w) { player.y -= player.speed; player.frameY = 3; }
+            if (keys.s) { player.y += player.speed; player.frameY = 0; }
+            if (keys.a) { player.x -= player.speed; player.frameY = 2; ratio.direction = 'left'; }
+            if (keys.d) { player.x += player.speed; player.frameY = 1; ratio.direction = 'right'; }
 
+            // Screen Bounds
+            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+            player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+            
+            // Ratio Follow Logic
             const dx = player.x - ratio.x;
             const dy = player.y - ratio.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
@@ -309,6 +355,7 @@
                 ratio.y += (dy / distance) * ratio.speed;
             }
             
+            // Interaction Check
             gameState.nearbyObject = null;
             for (const obj of interactables) {
                 if (checkCollision(player, obj)) { gameState.nearbyObject = obj; return; }
@@ -317,11 +364,31 @@
                  gameState.nearbyObject = { id: 'ratio', name: 'Ratio', ...ratio };
             }
         }
+        
+        // --- Animation Handling ---
+        let frameCounter = 0;
+        const animationSpeed = 8; // Update frame every 8 game loops
+
+        function handlePlayerAnimation() {
+            if (gameState.player.moving) {
+                frameCounter++;
+                if (frameCounter >= animationSpeed) {
+                    frameCounter = 0;
+                    gameState.player.frameX = (gameState.player.frameX + 1) % 4;
+                }
+            } else {
+                gameState.player.frameX = 0;
+            }
+        }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (backgroundLoaded) { ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height); } 
-            else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+            // Draw background first
+            if (backgroundImage.complete && backgroundImage.naturalWidth !== 0) { 
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height); 
+            } else { 
+                ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height); 
+            }
             
             interactables.forEach(obj => {
                 let color = obj.color;
@@ -332,8 +399,30 @@
                 } else if (obj.id === 'plant' && gameState.isTaskComplete) { color = 'rgba(0, 255, 127, 0.7)'; }
                 ctx.fillStyle = color; ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
             });
-            ctx.fillStyle = gameState.ratio.color; ctx.fillRect(gameState.ratio.x, gameState.ratio.y, gameState.ratio.width, gameState.ratio.height);
-            ctx.fillStyle = gameState.player.color; ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
+            
+            // Draw Ratio Sprite
+            const { ratio } = gameState;
+            const ratioImg = ratio.direction === 'left' ? ratioImageL : ratioImageR;
+            if (ratioImg.complete && ratioImg.naturalWidth !== 0) {
+                ctx.drawImage(ratioImg, ratio.x, ratio.y, ratio.width, ratio.height);
+            }
+
+            // Draw Player Sprite
+            const { player } = gameState;
+            if (playerImage.complete && playerImage.naturalWidth !== 0) {
+                ctx.drawImage(
+                    playerImage,
+                    player.frameX * player.spriteWidth,
+                    player.frameY * player.spriteHeight,
+                    player.spriteWidth,
+                    player.spriteHeight,
+                    player.x,
+                    player.y,
+                    player.width,
+                    player.height
+                );
+            }
+
 
             drawHud();
             if (gameState.activeDialogue.isActive) drawDialogueBox();
@@ -408,6 +497,7 @@
 
         function gameLoop() {
             update();
+            handlePlayerAnimation();
             draw();
             requestAnimationFrame(gameLoop);
         }
@@ -421,7 +511,26 @@
             } else {
                 console.warn("API Key missing. BOT-ANY 5000 is offline.");
             }
-            gameLoop();
+
+            let imagesLoaded = 0;
+            const totalImages = 4; // background, player, ratio L, ratio R
+            const onImageLoad = () => {
+                imagesLoaded++;
+                if (imagesLoaded === totalImages) {
+                    gameLoop();
+                }
+            };
+
+            backgroundImage.onload = onImageLoad;
+            playerImage.onload = onImageLoad;
+            ratioImageL.onload = onImageLoad;
+            ratioImageR.onload = onImageLoad;
+
+            // Handle potential image loading errors
+            playerImage.onerror = () => { console.error("Failed to load walking_character_Finn.png"); onImageLoad(); };
+            ratioImageL.onerror = () => { console.error("Failed to load Ratio_L.png"); onImageLoad(); };
+            ratioImageR.onerror = () => { console.error("Failed to load Ratio_R.png"); onImageLoad(); };
+            backgroundImage.onerror = () => { console.error("Failed to load retro_background.png"); onImageLoad(); };
         }
 
         init();
