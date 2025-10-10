@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xeno-Ecology Simulation - Level 1</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script type="module">
+        // This allows the Groq SDK to run in a browser environment.
+        window.process = { env: { GROQ_API_KEY: "nope" } };
+    </script>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Roboto Mono', monospace;
+        }
+        .game-console-body {
+            background: linear-gradient(145deg, #3c3c3c, #1e1e1e);
+            border-radius: 30px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+            border: 2px solid #111;
+            width: 100%;
+            max-width: 900px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.5);
+        }
+        #canvas-header {
+            color: #aaa;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        #game-canvas {
+            border: 2px solid #4a4a4a;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            aspect-ratio: 1 / 1;
+            background-color: #000;
+        }
+        #game-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        .control-button {
+            background-color: #333;
+            border: 1px solid #555;
+            color: #eee;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-family: 'Roboto Mono', monospace;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .control-button:hover {
+            background-color: #444;
+            border-color: #777;
+        }
+        #save-feedback {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 255, 127, 0.8);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-console-body">
+        <div id="canvas-header">XENO-ECOLOGY LAB // CHRONO-BLOOM EXAM</div>
+        <canvas id="game-canvas" width="800" height="800"></canvas>
+        <div id="game-controls">
+            <button id="save-button" class="control-button">Save Game</button>
+            <button id="load-button" class="control-button">Load Last Save</button>
+            <button id="new-game-button" class="control-button">New Game</button>
+        </div>
+    </div>
+    <div id="save-feedback"></div>
+
+    <script type="module">
+        import Groq from "https://esm.sh/groq-sdk";
+
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- API Configuration ---
+        const API_KEY = "nope"; // <-- PASTE YOUR GROQ API KEY HERE
+        let groq;
+
+        // --- Character Configuration ---
+        const PLAYER_SPEED = 1; 
+        const PLAYER_DISPLAY_WIDTH = 50; 
+        const PLAYER_DISPLAY_HEIGHT = 74; 
+        const RATIO_DISPLAY_WIDTH = 35; 
+        const RATIO_DISPLAY_HEIGHT = 37;
+        const GROUNDSKEEPER_DISPLAY_WIDTH = 60; // Made the bot smaller
+        const GROUNDSKEEPER_DISPLAY_HEIGHT = 78; // Adjusted for new 165x214 aspect ratio
+        const GROUNDSKEEPER_FEET_DISPLAY_HEIGHT = 8; // Adjusted for new 249x33 aspect ratio
+
+        // --- Game State and Configuration ---
+        // We define the default state here. It will be overwritten by loadGame() if a save exists.
+        let gameState = {
+            player: { 
+                x: 385, y: 700, spriteWidth: 164, spriteHeight: 243,
+                width: PLAYER_DISPLAY_WIDTH, height: PLAYER_DISPLAY_HEIGHT,
+                frameX: 0, frameY: 0, speed: PLAYER_SPEED, moving: false 
+            },
+            ratio: { 
+                x: 385, y: 750, width: RATIO_DISPLAY_WIDTH, height: RATIO_DISPLAY_HEIGHT, 
+                speed: 2.8, followDistance: 80, direction: 'right'
+            },
+            groundskeeper: {
+                yOffset: 0 // For animation
+            },
+            keys: { w: false, a: false, s: false, d: false },
+            collectedComponents: {
+                stabilizer: false, nutrients: false, light: false
+            },
+            isTaskComplete: false,
+            promptBuilder: {
+                isActive: false,
+                currentText: '',
+                isSubmitting: false,
+                lastResult: null
+            },
+            nearbyObject: null,
+            isAiThinking: false,
+            groundskeeperDialogueHistory: [],
+            activeDialogue: {
+                isActive: false, speaker: null, text: '', displayText: '',
+                charIndex: 0, options: [], selectedOption: 0
+            }
+        };
+
+        // --- Map Components ---
+        const interactables = [
+            { id: 'plant', name: 'Chrono-Bloom', x: 360, y: 360, width: 80, height: 80, color: 'rgba(255, 0, 255, 0.5)' },
+            { id: 'stabilizer', name: 'Temporal Stabilizer', x: 130, y: 150, width: 100, height: 50, color: 'rgba(0, 255, 255, 0.5)' },
+            { id: 'nutrients', name: 'Nutrient Synthesizer', x: 570, y: 150, width: 100, height: 50, color: 'rgba(65, 105, 225, 0.5)' },
+            { id: 'light', name: 'Lunar Lamp', x: 80, y: 400, width: 50, height: 80, color: 'rgba(255, 255, 0, 0.5)' },
+            { id: 'groundskeeper', name: 'GARY', x: 600, y: 640, width: GROUNDSKEEPER_DISPLAY_WIDTH, height: GROUNDSKEEPER_DISPLAY_HEIGHT },
+            { id: 'exit', name: 'Exit Door', x: 375, y: 190, width: 50, height: 20, color: 'rgba(255, 69, 0, 0.7)' }
+        ];
+
+        // --- Asset Loading ---
+        const backgroundImage = new Image();
+        const playerImage = new Image();
+        const ratioImageR = new Image();
+        const ratioImageL = new Image();
+        const groundskeeperBodyImage = new Image();
+        const groundskeeperFeetImage = new Image();
+        
+        backgroundImage.src = 'retro_background.png';
+        playerImage.src = 'walking_character_Finn.png';
+        ratioImageR.src = 'Ratio_R.png'; 
+        ratioImageL.src = 'Ratio_L.png';
+        groundskeeperBodyImage.src = 'Groundskeeper.png';
+        groundskeeperFeetImage.src = 'Feet.png';
+
+        // --- AI Personas ---
+        const groundskeeperPersona = {
+            systemPrompt: `You are GARY, a sarcastic, rustic groundskeeper-bot. You give helpful but flavorful hints about how to stabilize the Chrono-Bloom. When asked about prompting, explain the importance of being specific and using the right keywords. Keep responses to 2-3 short sentences. You are talking to a student, the 'Cadet'.`
+        };
+        const plantEvaluatorPersona = {
+            systemPrompt: `You are the final evaluator for a botany exam. The user will provide a prompt to stabilize a "Chrono-Bloom". Your job is to describe the outcome based on their prompt. 
+            - If the prompt is good (mentions stability, nutrients, and light, and how they relate), describe a successful stabilization in a single, triumphant sentence. The sentence MUST include the keyword "SUCCESS".
+            - If the prompt is vague or missing key concepts, describe a spectacular failure in a single, dramatic sentence. The sentence MUST include the keyword "FAILURE".`
+        };
+
+        // --- Save and Load System ---
+        function showSaveFeedback(message) {
+            const feedbackEl = document.getElementById('save-feedback');
+            feedbackEl.textContent = message;
+            feedbackEl.style.opacity = '1';
+            setTimeout(() => {
+                feedbackEl.style.opacity = '0';
+            }, 2000);
+        }
+        
+        function saveGame() {
+            try {
+                // We stringify the gameState object and save it to localStorage
+                localStorage.setItem('xenoEcologySaveData', JSON.stringify(gameState));
+                console.log('Game Saved!');
+                showSaveFeedback('Game Saved!');
+            } catch (error) {
+                console.error("Could not save game state:", error);
+            }
+        }
+
+        function loadGame() {
+            try {
+                const savedData = localStorage.getItem('xenoEcologySaveData');
+                if (savedData) {
+                    const loadedState = JSON.parse(savedData);
+                    // Overwrite the current gameState with the loaded data
+                    gameState = loadedState;
+                    console.log('Game Loaded!', loadedState);
+                    showSaveFeedback('Save data loaded!');
+                } else {
+                    console.log('No save data found. Starting new game.');
+                }
+            } catch (error) {
+                console.error("Could not load game state:", error);
+                // If there's an error (e.g., corrupted data), we start a new game.
+                localStorage.removeItem('xenoEcologySaveData');
+            }
+        }
+        
+        function newGame() {
+            // Remove the save data and reload the page to start fresh.
+            localStorage.removeItem('xenoEcologySaveData');
+            location.reload();
+        }
+
+
+        // --- Dialogue & AI Systems ---
+        function startDialogue(speaker, text, options = []) {
+            const { activeDialogue } = gameState;
+            activeDialogue.isActive = true;
+            activeDialogue.speaker = speaker;
+            activeDialogue.text = text;
+            activeDialogue.displayText = '';
+            activeDialogue.charIndex = 0;
+            activeDialogue.options = options;
+            activeDialogue.selectedOption = 0;
+        }
+
+        function closeDialogue() {
+            gameState.activeDialogue.isActive = false;
+        }
+
+        async function getAiDialogue(userChoice) {
+            if (gameState.isAiThinking || !groq) return;
+            gameState.isAiThinking = true;
+            startDialogue("GARY", "Thinking...");
+
+            const messages = [
+                { role: "system", content: groundskeeperPersona.systemPrompt },
+                ...gameState.groundskeeperDialogueHistory,
+                { role: "user", content: userChoice }
+            ];
+            
+            try {
+                const stream = await groq.chat.completions.create({ messages, model: 'llama-3.1-8b-instant', stream: true });
+                let fullResponse = "";
+                gameState.activeDialogue.text = ""; 
+                for await (const chunk of stream) {
+                    const content = chunk.choices[0]?.delta?.content || "";
+                    fullResponse += content;
+                    gameState.activeDialogue.text = fullResponse;
+                }
+                gameState.groundskeeperDialogueHistory.push({ role: 'user', content: userChoice });
+                gameState.groundskeeperDialogueHistory.push({ role: 'assistant', content: fullResponse });
+            } catch (error) {
+                console.error("Groq API Error:", error);
+                startDialogue("System", "Error connecting to GARY's processors.");
+            } finally {
+                gameState.isAiThinking = false;
+            }
+        }
+
+        async function handlePromptSubmission() {
+            const { promptBuilder } = gameState;
+            if (promptBuilder.isSubmitting || !groq) return;
+
+            promptBuilder.isSubmitting = true;
+            promptBuilder.lastResult = "AI is evaluating your prompt...";
+
+            const messages = [
+                { role: "system", content: plantEvaluatorPersona.systemPrompt },
+                { role: "user", content: promptBuilder.currentText }
+            ];
+
+            try {
+                const result = await groq.chat.completions.create({ messages, model: 'llama-3.1-8b-instant' });
+                const responseText = result.choices[0]?.message?.content || "Evaluation error.";
+                promptBuilder.lastResult = responseText;
+
+                if (responseText.includes("SUCCESS")) {
+                    gameState.isTaskComplete = true;
+                    setTimeout(() => { 
+                        promptBuilder.isActive = false;
+                        startDialogue("System", "Prompt Accepted! The Chrono-Bloom is stable!");
+                    }, 2000);
+                } else {
+                     setTimeout(() => {
+                        promptBuilder.isActive = false;
+                        startDialogue("System", "Prompt Rejected. The plant is unstable. Try again.");
+                     }, 2000);
+                }
+            } catch (error) {
+                console.error("Groq Prompt Submission Error:", error);
+                promptBuilder.lastResult = "Critical error in the evaluation matrix.";
+            } finally {
+                setTimeout(() => {
+                    promptBuilder.isSubmitting = false;
+                }, 2000);
+            }
+        }
+        
+        function getRatioHint() {
+            const { collectedComponents, isTaskComplete } = gameState;
+            if (isTaskComplete) {
+                startDialogue("Ratio", "Splendid work, Cadet! The plant is stable. Let's head for the exit.");
+            } else if (collectedComponents.stabilizer && collectedComponents.nutrients && collectedComponents.light) {
+                startDialogue("Ratio", "We have all the keywords. Let's go to the Chrono-Bloom and write a command for it.");
+            } else if (!collectedComponents.stabilizer) {
+                startDialogue("Ratio", "That blue station might give us the 'Temporal Frequency' keyword.");
+            } else if (!collectedComponents.nutrients) {
+                startDialogue("Ratio", "I bet we can get the 'Nutrient Solution' keyword from that other station.");
+            } else {
+                 startDialogue("Ratio", "Let's find the 'Lunar-Cycle Light' keyword. It must be around here.");
+            }
+        }
+
+        function triggerDialogue(characterId) {
+            if (characterId === 'groundskeeper') {
+                startDialogue("GARY", "Well, Cadet? What's on your mind?", [
+                    { text: "Ask about the Chrono-Bloom.", action: () => getAiDialogue("Tell me about this Chrono-Bloom.") },
+                    { text: "How do I write a good prompt?", action: () => getAiDialogue("How do I write a good command for the plant?") },
+                    { text: "What are the key concepts?", action: () => getAiDialogue("What are the most important things to mention in the prompt?") },
+                    { text: "Goodbye.", action: closeDialogue }
+                ]);
+            } else if (characterId === 'ratio') {
+                getRatioHint();
+            }
+        }
+        
+        function handleInteraction() {
+            if (!gameState.nearbyObject || gameState.isAiThinking || gameState.promptBuilder.isActive || gameState.activeDialogue.isActive) return;
+            const { id } = gameState.nearbyObject;
+            
+            if (id === 'groundskeeper' || id === 'ratio') {
+                triggerDialogue(id);
+                return;
+            }
+
+            switch(id) {
+                case 'stabilizer':
+                    if (!gameState.collectedComponents.stabilizer) {
+                        gameState.collectedComponents.stabilizer = true;
+                        startDialogue("Ratio", "Excellent! We have the 'Temporal Frequency' keyword.");
+                    } else { startDialogue("System", "Keyword already collected."); }
+                    break;
+                case 'nutrients':
+                    if (!gameState.collectedComponents.nutrients) {
+                        gameState.collectedComponents.nutrients = true;
+                        startDialogue("Ratio", "Good, the 'Nutrient Solution' keyword is ours.");
+                    } else { startDialogue("System", "Keyword already collected."); }
+                    break;
+                case 'light':
+                    if (!gameState.collectedComponents.light) {
+                        gameState.collectedComponents.light = true;
+                        startDialogue("Ratio", "Perfect. We have the 'Lunar-Cycle Light' keyword.");
+                    } else { startDialogue("System", "Keyword already collected."); }
+                    break;
+                case 'plant':
+                    const { stabilizer, nutrients, light } = gameState.collectedComponents;
+                    if (stabilizer && nutrients && light) {
+                        if (!gameState.isTaskComplete) { 
+                            gameState.promptBuilder.isActive = true; 
+                            gameState.promptBuilder.currentText = '';
+                            gameState.promptBuilder.lastResult = null;
+                        } else { 
+                            startDialogue("System", "The Chrono-Bloom is already stable."); 
+                        }
+                    } else { startDialogue("System", "You need all 3 Prompt Keywords to activate the builder."); }
+                    break;
+                case 'exit':
+                    if (gameState.isTaskComplete) {
+                         alert("Congratulations! Exam Complete!");
+                         location.reload(); 
+                    } else { startDialogue("System", "Door is locked. Stabilize the Chrono-Bloom first."); }
+                    break;
+            }
+        }
+        
+        // --- Keyboard Input Handling ---
+        window.addEventListener('keydown', (e) => {
+            const { activeDialogue, promptBuilder } = gameState;
+
+            if (activeDialogue.isActive) {
+                const key = e.key.toLowerCase();
+                if (key === 'w' || key === 'arrowup') {
+                    activeDialogue.selectedOption = (activeDialogue.selectedOption - 1 + activeDialogue.options.length) % activeDialogue.options.length;
+                } else if (key === 's' || key === 'arrowdown') {
+                    activeDialogue.selectedOption = (activeDialogue.selectedOption + 1) % activeDialogue.options.length;
+                } else if (key === 'e' || key === 'enter') {
+                    if (activeDialogue.charIndex < activeDialogue.text.length) {
+                        activeDialogue.charIndex = activeDialogue.text.length;
+                    } else if (activeDialogue.options.length > 0) {
+                        activeDialogue.options[activeDialogue.selectedOption].action();
+                    } else {
+                        closeDialogue();
+                    }
+                }
+                return;
+            }
+
+            if (promptBuilder.isActive && !promptBuilder.isSubmitting) {
+                if (e.key.length === 1 && promptBuilder.currentText.length < 200) {
+                    promptBuilder.currentText += e.key;
+                } else if (e.key === 'Backspace') {
+                    promptBuilder.currentText = promptBuilder.currentText.slice(0, -1);
+                } else if (e.key === 'Enter') {
+                    handlePromptSubmission();
+                } else if (e.key === 'Escape') {
+                    promptBuilder.isActive = false;
+                }
+                return;
+            }
+
+            const key = e.key.toLowerCase();
+            if (gameState.keys.hasOwnProperty(key)) {
+                gameState.keys[key] = true;
+                gameState.player.moving = true;
+            }
+            if (key === 'e') handleInteraction();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (gameState.keys.hasOwnProperty(key)) {
+                gameState.keys[key] = false;
+            }
+            if (!gameState.keys.w && !gameState.keys.a && !gameState.keys.s && !gameState.keys.d) {
+                gameState.player.moving = false;
+            }
+        });
+        
+        // --- Collision Logic ---
+        function checkCollision(rectA, rectB) {
+            const buffer = 15; 
+            return rectA.x < rectB.x + rectB.width + buffer && rectA.x + rectA.width + buffer > rectB.x &&
+                   rectA.y < rectB.y + rectB.height + buffer && rectA.y + rectA.height + buffer > rectB.y;
+        }
+
+        // --- Game Loop ---
+        function update() {
+            if (gameState.promptBuilder.isActive || gameState.activeDialogue.isActive) {
+                gameState.player.moving = false;
+                return;
+            }
+            const { player, ratio, keys } = gameState;
+            if (keys.w) { player.y -= player.speed; player.frameY = 3; }
+            if (keys.s) { player.y += player.speed; player.frameY = 0; }
+            if (keys.a) { player.x -= player.speed; player.frameY = 2; ratio.direction = 'left'; }
+            if (keys.d) { player.x += player.speed; player.frameY = 1; ratio.direction = 'right'; }
+
+            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+            player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+            
+            const dx = player.x - ratio.x; const dy = player.y - ratio.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > ratio.followDistance) {
+                ratio.x += (dx / distance) * ratio.speed; ratio.y += (dy / distance) * ratio.speed;
+            }
+            
+            gameState.nearbyObject = null;
+            for (const obj of interactables) {
+                if (checkCollision(player, obj)) { gameState.nearbyObject = obj; return; }
+            }
+            if (checkCollision(player, ratio)) {
+                 gameState.nearbyObject = { id: 'ratio', name: 'Ratio', ...ratio };
+            }
+        }
+        
+        // --- Animation Handling ---
+        let frameCounter = 0;
+        const playerAnimationSpeed = 8;
+        const groundskeeperAnimConfig = {
+            amplitude: 1.5,
+            speed: 0.005
+        };
+
+        function handlePlayerAnimation() {
+            if (gameState.player.moving) {
+                frameCounter++;
+                if (frameCounter >= playerAnimationSpeed) {
+                    frameCounter = 0;
+                    gameState.player.frameX = (gameState.player.frameX + 1) % 4;
+                }
+            } else {
+                gameState.player.frameX = 0;
+            }
+        }
+
+        function updateGroundskeeperAnimation(time) {
+            gameState.groundskeeper.yOffset = Math.sin(time * groundskeeperAnimConfig.speed) * groundskeeperAnimConfig.amplitude;
+        }
+
+        // --- Drawing Functions ---
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (backgroundImage.complete && backgroundImage.naturalWidth !== 0) { 
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height); 
+            } else { 
+                ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height); 
+            }
+            
+            interactables.forEach(obj => {
+                // Groundskeeper is drawn separately, so we skip it here
+                if (obj.id === 'groundskeeper') return;
+
+                let color = obj.color;
+                if (obj.id === 'exit' && gameState.isTaskComplete) color = 'rgba(0, 255, 127, 0.7)';
+                if (obj.id === 'plant' && !gameState.isTaskComplete) {
+                    const pulse = Math.abs(Math.sin(Date.now() * 0.002));
+                    color = `rgba(${Math.floor(255 * (1 - pulse) + 128 * pulse)}, 0, ${Math.floor(255 * pulse)}, 0.6)`;
+                } else if (obj.id === 'plant' && gameState.isTaskComplete) { color = 'rgba(0, 255, 127, 0.7)'; }
+                ctx.fillStyle = color; ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+            });
+
+            // Draw Groundskeeper Bot
+            const groundskeeperObj = interactables.find(obj => obj.id === 'groundskeeper');
+            if (groundskeeperObj) {
+                // Calculate the correct Y position for the feet to be at the bottom of the body
+                const feetVerticalOffset = 5; // Nudge the feet down a bit
+                const feetY = groundskeeperObj.y + GROUNDSKEEPER_DISPLAY_HEIGHT - GROUNDSKEEPER_FEET_DISPLAY_HEIGHT + feetVerticalOffset;
+                
+                // Draw body first (to be behind feet), with animation
+                if (groundskeeperBodyImage.complete && groundskeeperBodyImage.naturalWidth !== 0) {
+                    ctx.drawImage(groundskeeperBodyImage, groundskeeperObj.x, groundskeeperObj.y + gameState.groundskeeper.yOffset, GROUNDSKEEPER_DISPLAY_WIDTH, GROUNDSKEEPER_DISPLAY_HEIGHT);
+                }
+
+                // Draw feet second (to be in front), without animation, at the calculated position
+                if (groundskeeperFeetImage.complete && groundskeeperFeetImage.naturalWidth !== 0) {
+                    ctx.drawImage(groundskeeperFeetImage, groundskeeperObj.x, feetY, GROUNDSKEEPER_DISPLAY_WIDTH, GROUNDSKEEPER_FEET_DISPLAY_HEIGHT);
+                }
+            }
+            
+            const { ratio } = gameState;
+            const ratioImg = ratio.direction === 'left' ? ratioImageL : ratioImageR;
+            if (ratioImg.complete && ratioImg.naturalWidth !== 0) {
+                ctx.drawImage(ratioImg, ratio.x, ratio.y, ratio.width, ratio.height);
+            }
+
+            const { player } = gameState;
+            if (playerImage.complete && playerImage.naturalWidth !== 0) {
+                ctx.drawImage( playerImage, player.frameX * player.spriteWidth, player.frameY * player.spriteHeight,
+                    player.spriteWidth, player.spriteHeight, player.x, player.y, player.width, player.height );
+            }
+
+            drawHud();
+            if (gameState.activeDialogue.isActive) drawDialogueBox();
+            if (gameState.promptBuilder.isActive) drawPromptBuilder();
+        }
+
+        function drawHud() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; ctx.fillRect(0, 0, canvas.width, 90);
+            ctx.fillStyle = '#FFFFFF'; ctx.font = '16px "Roboto Mono"'; ctx.textAlign = 'left';
+            ctx.fillText("Objective: Write a prompt to stabilize the Chrono-Bloom.", 20, 30);
+            ctx.fillText("1. Collect 3 Prompt Keywords.", 20, 55);
+            ctx.textAlign = 'right'; ctx.fillText("PROMPT KEYWORDS:", 780, 30);
+            ctx.fillStyle = gameState.collectedComponents.stabilizer ? '#00FFFF' : '#555'; ctx.fillText("[Temporal Freq.]", 780, 55);
+            ctx.fillStyle = gameState.collectedComponents.nutrients ? '#4169E1' : '#555'; ctx.fillText("[Nutrient Sol.]", 610, 55);
+            ctx.fillStyle = gameState.collectedComponents.light ? '#FFFF00' : '#555'; ctx.fillText("[Lunar Light]", 440, 55);
+
+            if (!gameState.activeDialogue.isActive && !gameState.promptBuilder.isActive) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+                ctx.textAlign = 'center'; ctx.fillStyle = '#FFFFFF';
+                let bottomText = "Use WASD to move.";
+                if (gameState.nearbyObject) { bottomText = `Press [E] to interact with ${gameState.nearbyObject.name}`; }
+                ctx.fillText(bottomText, canvas.width / 2, canvas.height - 20);
+            }
+        }
+
+        function drawDialogueBox() {
+            const { activeDialogue } = gameState;
+            if (activeDialogue.charIndex < activeDialogue.text.length) activeDialogue.charIndex += 1;
+            activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
+
+            const boxHeight = 180;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2;
+            ctx.fillRect(20, canvas.height - boxHeight - 20, canvas.width - 40, boxHeight);
+            ctx.strokeRect(20, canvas.height - boxHeight - 20, canvas.width - 40, boxHeight);
+
+            ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 20px "Roboto Mono"'; ctx.textAlign = 'left';
+            ctx.fillText(activeDialogue.speaker, 40, canvas.height - boxHeight);
+            
+            ctx.font = '18px "Roboto Mono"';
+            const lines = wrapText(activeDialogue.displayText, 70);
+            lines.forEach((line, index) => {
+                ctx.fillText(line, 45, canvas.height - boxHeight + 40 + (index * 25));
+            });
+
+            if (activeDialogue.charIndex >= activeDialogue.text.length) {
+                if(activeDialogue.options.length > 0) {
+                    activeDialogue.options.forEach((option, index) => {
+                        ctx.fillStyle = index === activeDialogue.selectedOption ? '#FFFF00' : '#FFFFFF';
+                        ctx.fillText(`${index === activeDialogue.selectedOption ? '> ' : ''}${option.text}`, 50, canvas.height - boxHeight + 100 + (index * 25));
+                    });
+                } else {
+                    ctx.fillText("Press [E] to continue...", canvas.width - 200, canvas.height - 40);
+                }
+            }
+        }
+
+        function drawPromptBuilder() {
+            const { promptBuilder } = gameState;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#00FFFF'; ctx.lineWidth = 2;
+            const box = { x: 50, y: 150, width: 700, height: 500 };
+            ctx.fillRect(box.x, box.y, box.width, box.height);
+            ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+            ctx.fillStyle = '#FFFFFF'; ctx.font = '24px "Roboto Mono"'; ctx.textAlign = 'center';
+            ctx.fillText("CHRONO-BLOOM PROMPT INTERFACE", canvas.width / 2, box.y + 50);
+
+            ctx.font = '16px "Roboto Mono"'; ctx.textAlign = 'left';
+            ctx.fillText("Instructions: Write a detailed command to stabilize the plant.", box.x + 30, box.y + 90);
+            ctx.fillText("Use all three keywords. Be specific. Press [Enter] to submit.", box.x + 30, box.y + 115);
+
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(box.x + 30, box.y + 150, box.width - 60, 200);
+            ctx.strokeStyle = '#555';
+            ctx.strokeRect(box.x + 30, box.y + 150, box.width - 60, 200);
+
+            ctx.fillStyle = '#00FF7F';
+            const lines = wrapText(promptBuilder.currentText, 65);
+             lines.forEach((line, index) => {
+                ctx.fillText(line, box.x + 40, box.y + 175 + (index * 25));
+            });
+
+            if (Math.floor(Date.now() / 500) % 2 === 0 && !promptBuilder.isSubmitting) {
+                const lastLine = lines[lines.length - 1] || '';
+                const cursorX = box.x + 40 + ctx.measureText(lastLine).width;
+                const cursorY = box.y + 175 + ((lines.length -1) * 25) - 16;
+                ctx.fillRect(cursorX, cursorY, 10, 20);
+            }
+            
+            ctx.textAlign = 'center';
+            ctx.font = '18px "Roboto Mono"';
+            if(promptBuilder.lastResult) {
+                const resultColor = promptBuilder.lastResult.includes("SUCCESS") ? '#00FFFF' : (promptBuilder.lastResult.includes("FAILURE") ? '#FF4444' : '#FFFFFF');
+                ctx.fillStyle = resultColor;
+                ctx.fillText(promptBuilder.lastResult, canvas.width / 2, box.y + 420);
+            } else {
+                 ctx.fillStyle = '#999';
+                 ctx.fillText("Awaiting prompt submission...", canvas.width / 2, box.y + 420);
+            }
+             ctx.fillStyle = '#999';
+             ctx.font = '14px "Roboto Mono"';
+             ctx.fillText("Press [Esc] to exit builder", canvas.width / 2, box.y + 470);
+        }
+
+        // --- Utility Functions ---
+        function wrapText(text, maxWidthChars) {
+            const words = text.split(' ');
+            const lines = [];
+            let currentLine = words[0] || '';
+            for (let i = 1; i < words.length; i++) {
+                const word = words[i];
+                if (currentLine.length + word.length + 1 < maxWidthChars) {
+                    currentLine += ' ' + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        // --- Initialization ---
+        function gameLoop(time) {
+            update();
+            handlePlayerAnimation();
+            updateGroundskeeperAnimation(time);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function init() {
+            // We call loadGame() at the very beginning.
+            loadGame(); 
+            
+            if (API_KEY) {
+                try {
+                    groq = new Groq({ apiKey: API_KEY, dangerouslyAllowBrowser: true });
+                } catch(e) { console.error("Failed to initialize Groq SDK:", e); }
+            } else {
+                console.warn("API Key missing. AI features are offline.");
+                startDialogue("System", "WARNING: GROQ API_KEY is not set. GARY and the Prompt Builder are offline.", []);
+            }
+            
+            // Set up button listeners
+            document.getElementById('save-button').addEventListener('click', saveGame);
+            document.getElementById('load-button').addEventListener('click', () => location.reload()); // Reload page to trigger loadGame
+            document.getElementById('new-game-button').addEventListener('click', newGame);
+            
+            // Set up autosave interval (every 15 seconds)
+            setInterval(saveGame, 15000);
+            
+            let loaded = 0; const total = 6; // Increased total images to 6
+            const onload = () => { if (++loaded === total) requestAnimationFrame(gameLoop); };
+            backgroundImage.onload = onload; 
+            playerImage.onload = onload;
+            ratioImageL.onload = onload; 
+            ratioImageR.onload = onload;
+            groundskeeperBodyImage.onload = onload;
+            groundskeeperFeetImage.onload = onload;
+        }
+
+        init();
+    </script>
+</body>
+</html>

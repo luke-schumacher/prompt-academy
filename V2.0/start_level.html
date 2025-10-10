@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Me Myself and AI: The First Prompt</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script type="module">
+        // This allows the Groq SDK to run in a browser environment.
+        window.process = { env: { GROQ_API_KEY: "nope" } };
+    </script>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Roboto Mono', monospace;
+            overflow: hidden;
+        }
+        .game-container {
+            position: relative;
+        }
+        .game-console-body {
+            background: linear-gradient(145deg, #3c3c3c, #1e1e1e);
+            border-radius: 30px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+            border: 2px solid #111;
+            width: 100%;
+            max-width: 900px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 10px 30px rgba(0,0,0,0.5);
+        }
+        #canvas-header {
+            color: #aaa;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        #game-canvas {
+            border: 2px solid #4a4a4a;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 1536px;
+            height: auto;
+            aspect-ratio: 1536 / 1024;
+            background-color: #000;
+        }
+        #game-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        .control-button {
+            background-color: #333;
+            border: 1px solid #555;
+            color: #eee;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-family: 'Roboto Mono', monospace;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .control-button:hover {
+            background-color: #444;
+            border-color: #777;
+        }
+        #start-button {
+            position: absolute;
+            bottom: 18%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px;
+            font-size: 24px;
+            font-family: 'Press Start 2P', monospace;
+            background-color: #222;
+            color: #0f0;
+            border: 4px solid #000;
+            border-radius: 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 10px #000;
+            text-shadow: 0 0 5px #0f0;
+            display: block; /* Always visible now */
+        }
+        #start-button:hover {
+            background-color: #333;
+            color: #fff;
+            text-shadow: 0 0 10px #0f0, 0 0 15px #0f0;
+        }
+        #save-feedback {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 255, 127, 0.8);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="game-console-body">
+            <div id="canvas-header">PROMPT ENGINEERING ACADEMY</div>
+            <canvas id="game-canvas" width="1536" height="1024"></canvas>
+            <div id="game-controls">
+                <button id="save-button" class="control-button">Save Game</button>
+                <button id="load-button" class="control-button">Load Last Save</button>
+                <button id="new-game-button" class="control-button">New Game</button>
+            </div>
+        </div>
+        <button id="start-button">START</button>
+    </div>
+    <div id="save-feedback"></div>
+
+    <script type="module">
+        import Groq from "https://esm.sh/groq-sdk";
+
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('start-button');
+
+        const API_KEY = "nope";
+        let groq;
+
+        const PLAYER_SPEED = 1; 
+        const PLAYER_DISPLAY_WIDTH = 50; 
+        const PLAYER_DISPLAY_HEIGHT = 74; 
+        const RATIO_DISPLAY_WIDTH = 35; 
+        const RATIO_DISPLAY_HEIGHT = 37;
+        const GROUNDSKEEPER_DISPLAY_WIDTH = 60; 
+        const GROUNDSKEEPER_DISPLAY_HEIGHT = 78;
+
+        let gameState = {
+            gameMode: 'startScreen',
+            transitionAlpha: 0,
+            isAiThinking: false,
+            leaves: [],
+            player: { 
+                x: 750, y: 800, spriteWidth: 164, spriteHeight: 243,
+                width: PLAYER_DISPLAY_WIDTH, height: PLAYER_DISPLAY_HEIGHT,
+                frameX: 0, frameY: 0, speed: PLAYER_SPEED, moving: false 
+            },
+            ratio: { 
+                x: 750, y: 850, width: RATIO_DISPLAY_WIDTH, height: RATIO_DISPLAY_HEIGHT, 
+                speed: 2.8, followDistance: 120, direction: 'right'
+            },
+            keys: { w: false, a: false, s: false, d: false },
+            nearbyObject: null,
+            activeDialogue: {
+                isActive: false, speaker: null, text: '', displayText: '',
+                charIndex: 0, options: [], selectedOption: 0
+            },
+            tutorialState: {
+                step: 0,
+                isDark: true,
+                inventory: { cog: false, loom: false, chip: false },
+                garyFixed: false,
+                garyDialogueStep: 0,
+                dialogueHistory: [],
+            },
+            startScreenState: {
+                finn: { x: 200, y: 500, targetX: 200, targetY: 500, pauseTimer: 120, speed: 0.5, moving: false, frameY: 0 },
+                ratio: { x: 1200, y: 550, targetX: 1200, targetY: 550, pauseTimer: 180, speed: 0.4, moving: false }
+            }
+        };
+
+        const tutorialInteractables = [
+            { id: 'broken_gary', name: 'Deactivated GARY', x: 1380, y: 450, width: 60, height: 78 },
+            { id: 'cog', name: 'Cognitive Cog', x: 200, y: 250, width: 20, height: 20, color: 'rgba(255, 215, 0, 0.8)'},
+            { id: 'loom', name: 'Logic Loom', x: 800, y: 850, width: 20, height: 20, color: 'rgba(0, 191, 255, 0.8)'},
+            { id: 'chip', name: 'Empathy Chip', x: 1000, y: 150, width: 20, height: 20, color: 'rgba(255, 105, 180, 0.8)'}
+        ];
+        
+        const startScreenImage = new Image();
+        const tutorialMapImage = new Image();
+        const playerImage = new Image();
+        const ratioImageR = new Image();
+        const ratioImageL = new Image();
+        const groundskeeperBodyImage = new Image();
+        const groundskeeperFeetImage = new Image();
+        
+        startScreenImage.src = 'assets/start/start_background.png';
+        tutorialMapImage.src = 'assets/start/start_background.png';
+        playerImage.src = 'assets/start/walking_character_Finn.png';
+        ratioImageR.src = 'assets/start/Ratio_R.png'; 
+        ratioImageL.src = 'assets/start/Ratio_L.png';
+        groundskeeperBodyImage.src = 'assets/start/Groundskeeper.png';
+        groundskeeperFeetImage.src = 'assets/start/Feet.png';
+
+        const ratioPersona = {
+            systemPrompt: `You are Ratio, an ancient, wise, and slightly cryptic guide. You are leading a new student, the 'Cadet', through their first trial. Your goal is to guide them to fix a broken robot named GARY. Keep responses to 2-3 short, helpful sentences. Be encouraging but mysterious.`
+        };
+        
+        function showSaveFeedback(message) {
+            const feedbackEl = document.getElementById('save-feedback');
+            feedbackEl.textContent = message;
+            feedbackEl.style.opacity = '1';
+            setTimeout(() => { feedbackEl.style.opacity = '0'; }, 2000);
+        }
+        
+        function saveGame() {
+            try {
+                localStorage.setItem('meMyselfAiSave_v1', JSON.stringify(gameState));
+                showSaveFeedback('Game Saved!');
+            } catch (error) { console.error("Could not save game:", error); }
+        }
+
+        function loadGame() {
+            try {
+                const savedData = localStorage.getItem('meMyselfAiSave_v1');
+                if (savedData) {
+                    const loadedState = JSON.parse(savedData);
+                    if (loadedState.gameMode !== 'startScreen') {
+                        gameState = loadedState;
+                        showSaveFeedback('Save data loaded!');
+                    }
+                }
+            } catch (error) {
+                console.error("Could not load game:", error);
+                localStorage.removeItem('meMyselfAiSave_v1');
+            }
+        }
+        
+        function newGame() {
+            localStorage.removeItem('meMyselfAiSave_v1');
+            location.reload();
+        }
+
+        function startDialogue(speaker, text, options = []) {
+            const { activeDialogue } = gameState;
+            activeDialogue.isActive = true;
+            activeDialogue.speaker = speaker;
+            activeDialogue.text = text;
+            activeDialogue.displayText = '';
+            activeDialogue.charIndex = 0;
+            activeDialogue.options = options;
+            activeDialogue.selectedOption = 0;
+        }
+
+        function closeDialogue() {
+            gameState.activeDialogue.isActive = false;
+            if (gameState.gameMode === 'tutorial') {
+                handleTutorialProgression();
+            }
+        }
+
+        async function getRatioDialogue(prompt) {
+            if (gameState.isAiThinking || !groq) return;
+            gameState.isAiThinking = true;
+            startDialogue("Ratio", "...");
+
+            const { tutorialState } = gameState;
+            tutorialState.dialogueHistory.push({ role: 'user', content: prompt });
+            
+            try {
+                const stream = await groq.chat.completions.create({ 
+                    messages: [ { role: "system", content: ratioPersona.systemPrompt }, ...tutorialState.dialogueHistory ], 
+                    model: 'llama-3.1-8b-instant', 
+                    stream: true 
+                });
+
+                let fullResponse = "";
+                gameState.activeDialogue.text = ""; 
+                for await (const chunk of stream) {
+                    const content = chunk.choices[0]?.delta?.content || "";
+                    fullResponse += content;
+                    gameState.activeDialogue.text = fullResponse;
+                }
+                tutorialState.dialogueHistory.push({ role: 'assistant', content: fullResponse });
+
+            } catch (error) {
+                console.error("Groq API Error:", error);
+                startDialogue("System", "Error: Ratio's connection is unstable.");
+            } finally {
+                gameState.isAiThinking = false;
+            }
+        }
+        
+        function handleInteraction() {
+            const { nearbyObject, activeDialogue, tutorialState } = gameState;
+            if (!nearbyObject || activeDialogue.isActive) return;
+
+            const { id } = nearbyObject;
+
+            if (id === 'cog' || id === 'loom' || id === 'chip') {
+                if (!tutorialState.inventory[id]) {
+                    tutorialState.inventory[id] = true;
+                    getRatioDialogue(`The user just found the ${nearbyObject.name}. Congratulate them and remind them how many parts are left to find.`);
+                }
+            } else if (id === 'broken_gary') {
+                handleGaryInteraction();
+            }
+        }
+
+        function handleGaryInteraction() {
+            const { tutorialState } = gameState;
+            const { cog, loom, chip } = tutorialState.inventory;
+
+            if (!cog || !loom || !chip) {
+                getRatioDialogue("The player is trying to fix GARY but doesn't have all the parts yet. Tell them to keep searching.");
+                return;
+            }
+
+            switch (tutorialState.garyDialogueStep) {
+                case 0:
+                    startDialogue("GARY", "*whirr... bzzt...* Identity not found... State purpose...", [
+                        { text: "We are here to help you find yourself.", action: () => { tutorialState.garyDialogueStep = 1; handleGaryInteraction(); }},
+                        { text: "You're just a machine. We need to pass.", action: () => { startDialogue("GARY", "Threat detected. Defensive protocols active. *BZZT*"); }},
+                    ]);
+                    break;
+                case 1:
+                     startDialogue("GARY", "Help requires... recalibration. To build a consciousness, what is the first foundation? Present the first module.", [
+                        { text: "Install Cognitive Cog (To think)", action: () => { tutorialState.garyDialogueStep = 2; handleGaryInteraction(); }},
+                        { text: "Install Logic Loom (To reason)", action: () => { startDialogue("GARY", "SEQUENCE ERROR. Reason without a mind to wield it is... hollow. *fizzle*"); tutorialState.garyDialogueStep = 0; }},
+                        { text: "Install Empathy Chip (To feel)", action: () => { startDialogue("GARY", "SEQUENCE ERROR. Feeling without thought is... chaos. *whirr*"); tutorialState.garyDialogueStep = 0; }}
+                    ]);
+                    break;
+                case 2:
+                     startDialogue("GARY", "I think, therefore I am... Acknowledged. A mind is formed. What is the next step to give it structure? Present the second module.", [
+                        { text: "Install Logic Loom (To reason)", action: () => { tutorialState.garyDialogueStep = 3; handleGaryInteraction(); }},
+                        { text: "Install Empathy Chip (To feel)", action: () => { startDialogue("GARY", "SEQUENCE ERROR. Empathy before logic invites... emotional overload. *static*"); tutorialState.garyDialogueStep = 0; }}
+                    ]);
+                    break;
+                case 3:
+                    startDialogue("GARY", "Logic processors online. I can structure my thoughts. What is the final piece to connect me with the world? Present the final module.", [
+                        { text: "Install Empathy Chip (To feel)", action: () => {
+                            tutorialState.garyFixed = true;
+                            startDialogue("GARY", "I... understand. Thank you. Salutations, Cadet. The entrance is now open. Welcome to the Academy.");
+                        }}
+                    ]);
+                    break;
+            }
+        }
+        
+        function handleKeyDown(e) {
+            const { gameMode, activeDialogue } = gameState;
+            const key = e.key.toLowerCase();
+
+            if (gameMode === 'startScreen' || gameMode === 'transitioning') return;
+            
+            if (activeDialogue.isActive) {
+                if (key === 'w' || key === 'arrowup') {
+                    activeDialogue.selectedOption = (activeDialogue.selectedOption - 1 + activeDialogue.options.length) % activeDialogue.options.length;
+                } else if (key === 's' || key === 'arrowdown') {
+                    activeDialogue.selectedOption = (activeDialogue.selectedOption + 1) % activeDialogue.options.length;
+                } else if (key === 'e' || key === 'enter') {
+                    if (activeDialogue.charIndex < activeDialogue.text.length) {
+                        activeDialogue.charIndex = activeDialogue.text.length;
+                    } else if (activeDialogue.options.length > 0) {
+                        activeDialogue.options[activeDialogue.selectedOption].action();
+                    } else {
+                        closeDialogue();
+                    }
+                }
+                return;
+            }
+
+            if (gameState.keys.hasOwnProperty(key)) {
+                gameState.keys[key] = true;
+                gameState.player.moving = true;
+            }
+            if (key === 'e') handleInteraction();
+        }
+        
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (gameState.keys.hasOwnProperty(key)) gameState.keys[key] = false;
+            if (!gameState.keys.w && !gameState.keys.a && !gameState.keys.s && !gameState.keys.d) {
+                gameState.player.moving = false;
+            }
+        });
+        
+        function startGame() {
+            if (gameState.gameMode !== 'startScreen') return;
+            gameState.gameMode = 'transitioning';
+            startButton.style.display = 'none';
+        }
+        
+        function handleTutorialProgression() {
+            const { tutorialState } = gameState;
+            switch(tutorialState.step) {
+                case 0: 
+                    getRatioDialogue("The game has just started. Greet the player and tell them to walk using WASD.");
+                    tutorialState.step = 1;
+                    break;
+                case 1:
+                    getRatioDialogue("The player has moved for the first time. Point out the broken GARY robot that is blocking the way.");
+                    tutorialState.step = 2;
+                    break;
+                case 2:
+                    getRatioDialogue("Explain that the player needs to find 3 missing modules to fix GARY, and that they can see their inventory in the top-right.");
+                    tutorialState.step = 3;
+                    break;
+            }
+        }
+
+        function checkCollision(rectA, rectB) {
+            const buffer = 5; 
+            return rectA.x < rectB.x + rectB.width + buffer && rectA.x + rectA.width + buffer > rectB.x &&
+                   rectA.y < rectB.y + rectB.height + buffer && rectA.y + rectA.height + buffer > rectB.y;
+        }
+
+        function update(time) {
+            const { gameMode } = gameState;
+            handlePlayerAnimation();
+
+            if (gameMode === 'startScreen') {
+                updateStartScreenWander(gameState.startScreenState.finn);
+                updateStartScreenWander(gameState.startScreenState.ratio);
+                updateLeaves();
+
+            } else if (gameMode === 'transitioning') {
+                gameState.transitionAlpha += 0.02;
+                if (gameState.transitionAlpha >= 1) {
+                    gameState.gameMode = 'tutorial';
+                    handleTutorialProgression();
+                }
+            } else if (gameMode === 'tutorial') {
+                if (gameState.activeDialogue.isActive) {
+                    gameState.player.moving = false;
+                    return;
+                }
+                const { player, ratio, keys, tutorialState } = gameState;
+                let moved = false;
+                if (keys.w) { player.y -= player.speed; player.frameY = 3; moved = true; }
+                if (keys.s) { player.y += player.speed; player.frameY = 0; moved = true; }
+                if (keys.a) { player.x -= player.speed; player.frameY = 2; ratio.direction = 'left'; moved = true; }
+                if (keys.d) { player.x += player.speed; player.frameY = 1; ratio.direction = 'right'; moved = true; }
+                
+                if (moved && tutorialState.step === 1) {
+                    handleTutorialProgression();
+                }
+
+                player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+                player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+                
+                const dx = player.x - ratio.x; const dy = player.y - ratio.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > ratio.followDistance) {
+                    ratio.x += (dx / distance) * ratio.speed; ratio.y += (dy / distance) * ratio.speed;
+                }
+                
+                gameState.nearbyObject = null;
+                for (const obj of tutorialInteractables) {
+                    if (tutorialState.inventory[obj.id]) continue;
+                    if (checkCollision(player, obj)) { 
+                        gameState.nearbyObject = obj; 
+                        break; 
+                    }
+                }
+
+                if (tutorialState.garyFixed) {
+                    const gary = tutorialInteractables.find(i => i.id === 'broken_gary');
+                     if (checkCollision(player, gary)) {
+                        gameState.gameMode = 'level1';
+                        saveGame();
+                    }
+                }
+            }
+        }
+        
+        function updateStartScreenWander(character) {
+            if (character.pauseTimer > 0) {
+                character.pauseTimer--;
+                character.moving = false;
+                return;
+            }
+
+            character.moving = true;
+            const dx = character.targetX - character.x;
+            const dy = character.targetY - character.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 5) {
+                character.pauseTimer = Math.random() * 180 + 120; // Pause for 2-5 seconds
+                character.targetX = Math.random() * (canvas.width - 100);
+                character.targetY = Math.random() * (canvas.height - 150) + 50;
+                return;
+            }
+
+            character.x += (dx / dist) * character.speed;
+            character.y += (dy / dist) * character.speed;
+
+            // Update animation frame based on direction
+            if (dx > 0) character.frameY = 1; // Right
+            else if (dx < 0) character.frameY = 2; // Left
+        }
+
+        function updateLeaves() {
+            for (const leaf of gameState.leaves) {
+                leaf.y += leaf.speedY;
+                leaf.x += leaf.speedX;
+                leaf.rotation += leaf.rotationSpeed;
+                
+                // Reset leaf if it goes off screen
+                if (leaf.y > canvas.height) {
+                    leaf.y = -20;
+                    leaf.x = Math.random() * canvas.width;
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const { gameMode } = gameState;
+            
+            if (gameMode === 'startScreen' || gameMode === 'transitioning') {
+                drawStartScreen();
+            } else if (gameMode === 'tutorial') {
+                drawTutorial();
+            } else if (gameMode === 'level1') {
+                ctx.fillStyle = '#111';
+                ctx.fillRect(0,0,canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.font = '50px "Roboto Mono"';
+                ctx.fillText("Tutorial Complete! Level 1 Begins...", canvas.width/2, canvas.height/2);
+            }
+
+            if (gameMode === 'transitioning') {
+                ctx.fillStyle = `rgba(0, 0, 0, ${gameState.transitionAlpha})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+        
+        function drawStartScreen() {
+             if (startScreenImage.complete) ctx.drawImage(startScreenImage, 0, 0, canvas.width, canvas.height);
+                
+                drawLeaves();
+
+                ctx.textAlign = 'center';
+                ctx.font = '70px "Press Start 2P"';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.shadowColor = "#00ffff";
+                ctx.shadowBlur = 20;
+                ctx.fillText("Me Myself and AI", canvas.width / 2, 200);
+                ctx.shadowBlur = 0;
+                
+                const { finn, ratio } = gameState.startScreenState;
+                if (playerImage.complete) {
+                    const frameX = finn.moving ? gameState.player.frameX : 0;
+                    ctx.drawImage(playerImage, frameX * 164, finn.frameY * 243, 164, 243, finn.x, finn.y, 100, 148);
+                }
+                if (ratioImageR.complete) ctx.drawImage(ratioImageR, ratio.x, ratio.y, 70, 74);
+        }
+
+        function drawLeaves() {
+            ctx.fillStyle = 'rgba(218, 165, 32, 0.7)'; // Goldenrod color for leaves
+            for (const leaf of gameState.leaves) {
+                ctx.save();
+                ctx.translate(leaf.x, leaf.y);
+                ctx.rotate(leaf.rotation * Math.PI / 180);
+                ctx.fillRect(-leaf.size / 2, -leaf.size / 4, leaf.size, leaf.size / 2);
+                ctx.restore();
+            }
+        }
+
+        function drawTutorial() {
+            if (tutorialMapImage.complete) ctx.drawImage(tutorialMapImage, 0, 0, canvas.width, canvas.height);
+            
+            const { tutorialState } = gameState;
+
+            tutorialInteractables.forEach(obj => {
+                if (obj.id.match(/cog|loom|chip/) && !tutorialState.inventory[obj.id]) {
+                    const pulse = Math.abs(Math.sin(Date.now() * 0.005));
+                    ctx.fillStyle = obj.color;
+                    ctx.beginPath();
+                    ctx.arc(obj.x + obj.width/2, obj.y + obj.height/2, 10 + pulse * 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            const gary = tutorialInteractables.find(i => i.id === 'broken_gary');
+            if (tutorialState.garyFixed) {
+                if (groundskeeperBodyImage.complete) ctx.drawImage(groundskeeperBodyImage, gary.x, gary.y, gary.width, gary.height);
+            } else {
+                ctx.globalAlpha = Math.random() > 0.1 ? 1 : 0.5;
+                if (groundskeeperBodyImage.complete) ctx.drawImage(groundskeeperBodyImage, gary.x, gary.y, gary.width, gary.height);
+                ctx.globalAlpha = 1;
+            }
+
+            const { ratio, player } = gameState;
+            const ratioImg = ratio.direction === 'left' ? ratioImageL : ratioImageR;
+            if (ratioImg.complete) ctx.drawImage(ratioImg, ratio.x, ratio.y, ratio.width, ratio.height);
+
+            if (playerImage.complete) ctx.drawImage( playerImage, player.frameX * player.spriteWidth, player.frameY * player.spriteHeight,
+                    player.spriteWidth, player.spriteHeight, player.x, player.y, player.width, player.height );
+            
+            if (tutorialState.isDark) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            drawHud();
+            if (gameState.activeDialogue.isActive) drawDialogueBox();
+        }
+
+        let frameCounter = 0;
+        const playerAnimationSpeed = 25; // Even slower animation
+        function handlePlayerAnimation() {
+            if (gameState.player.moving || (gameState.gameMode === 'startScreen' && gameState.startScreenState.finn.moving)) {
+                frameCounter++;
+                if (frameCounter >= playerAnimationSpeed) {
+                    frameCounter = 0;
+                    gameState.player.frameX = (gameState.player.frameX + 1) % 4;
+                }
+            } else {
+                gameState.player.frameX = 0;
+            }
+        }
+
+        function drawHud() {
+            const { inventory } = gameState.tutorialState;
+            // Increased inventory size
+            const invWidth = 300;
+            const invHeight = 150;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; 
+            ctx.fillRect(canvas.width - invWidth - 20, 20, invWidth, invHeight);
+            ctx.strokeStyle = '#999'; 
+            ctx.strokeRect(canvas.width - invWidth - 20, 20, invWidth, invHeight);
+            
+            ctx.fillStyle = '#FFF'; 
+            ctx.font = '24px "Roboto Mono"'; 
+            ctx.textAlign = 'left';
+            ctx.fillText("INVENTORY", canvas.width - invWidth, 55);
+
+            ctx.font = '20px "Roboto Mono"'; 
+            ctx.fillStyle = inventory.cog ? '#FFD700' : '#555';
+            ctx.fillText("- Cognitive Cog", canvas.width - invWidth, 90);
+            ctx.fillStyle = inventory.loom ? '#00BFFF' : '#555';
+            ctx.fillText("- Logic Loom", canvas.width - invWidth, 120);
+            ctx.fillStyle = inventory.chip ? '#FF69B4' : '#555';
+            ctx.fillText("- Empathy Chip", canvas.width - invWidth, 150);
+
+            if (!gameState.activeDialogue.isActive) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'; ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+                ctx.textAlign = 'center'; ctx.font = '20px "Roboto Mono"'; ctx.fillStyle = '#FFFFFF';
+                let bottomText = "Use WASD to move.";
+                if (gameState.nearbyObject) { bottomText = `Press [E] to interact with ${gameState.nearbyObject.name}`; }
+                ctx.fillText(bottomText, canvas.width / 2, canvas.height - 20);
+            }
+        }
+
+        function drawDialogueBox() {
+            const { activeDialogue } = gameState;
+            if (activeDialogue.charIndex < activeDialogue.text.length) activeDialogue.charIndex += 1;
+            activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
+
+            const boxHeight = 200;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'; ctx.strokeStyle = '#FFF'; ctx.lineWidth = 2;
+            ctx.fillRect(20, canvas.height - boxHeight - 20, canvas.width - 40, boxHeight);
+            ctx.strokeRect(20, canvas.height - boxHeight - 20, canvas.width - 40, boxHeight);
+
+            ctx.fillStyle = '#FFF'; ctx.font = 'bold 20px "Roboto Mono"'; ctx.textAlign = 'left';
+            ctx.fillText(activeDialogue.speaker, 140, canvas.height - boxHeight);
+            
+            if (activeDialogue.speaker === "Ratio" && ratioImageR.complete) {
+                ctx.fillStyle = '#111';
+                ctx.fillRect(35, canvas.height - boxHeight - 5, 80, 80);
+                ctx.drawImage(ratioImageR, 40, canvas.height - boxHeight, 70, 70);
+            }
+            
+            ctx.font = 'bold 22px "Roboto Mono"';
+            ctx.fillStyle = '#99FF99';
+            ctx.shadowColor = "black";
+            ctx.shadowBlur = 4;
+            
+            const lines = wrapText(activeDialogue.displayText, 90);
+            lines.forEach((line, index) => {
+                ctx.fillText(line, 145, canvas.height - boxHeight + 45 + (index * 30));
+            });
+
+            if (activeDialogue.charIndex >= activeDialogue.text.length) {
+                if(activeDialogue.options.length > 0) {
+                    activeDialogue.options.forEach((option, index) => {
+                        ctx.fillStyle = index === activeDialogue.selectedOption ? '#FFFF00' : '#99FF99';
+                        ctx.fillText(`${index === activeDialogue.selectedOption ? '> ' : ''}${option.text}`, 50, canvas.height - boxHeight + 110 + (index * 30));
+                    });
+                } else {
+                    ctx.fillStyle = '#FFF';
+                    ctx.fillText("Press [E] to continue...", canvas.width - 300, canvas.height - 40);
+                }
+            }
+            ctx.shadowBlur = 0;
+        }
+        
+        function wrapText(text, maxWidthChars) {
+            const words = text.split(' ');
+            let lines = []; let currentLine = words[0] || '';
+            for (let i = 1; i < words.length; i++) {
+                if ((currentLine + ' ' + words[i]).length > maxWidthChars) {
+                    lines.push(currentLine); currentLine = words[i];
+                } else { currentLine += ' ' + words[i]; }
+            }
+            lines.push(currentLine); return lines;
+        }
+
+        function createLeaves() {
+            for (let i = 0; i < 50; i++) {
+                gameState.leaves.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 10 + 5,
+                    speedY: Math.random() * 1 + 0.5,
+                    speedX: Math.sin(Math.random() * Math.PI * 2) * 0.5,
+                    rotation: Math.random() * 360,
+                    rotationSpeed: (Math.random() - 0.5) * 2
+                });
+            }
+        }
+
+        function gameLoop(time) {
+            update(time);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function init() {
+            if (API_KEY) {
+                try { groq = new Groq({ apiKey: API_KEY, dangerouslyAllowBrowser: true }); } 
+                catch(e) { console.error("Failed to initialize Groq SDK:", e); }
+            } else {
+                console.warn("API Key missing. AI features are offline.");
+            }
+            
+            loadGame(); 
+            createLeaves();
+            
+            document.getElementById('save-button').addEventListener('click', saveGame);
+            document.getElementById('load-button').addEventListener('click', () => location.reload());
+            document.getElementById('new-game-button').addEventListener('click', newGame);
+            startButton.addEventListener('click', startGame);
+            
+            setInterval(saveGame, 180000);
+            
+            let loaded = 0; const total = 7;
+            const onload = () => { if (++loaded === total) requestAnimationFrame(gameLoop); };
+            
+            startScreenImage.onload = onload; tutorialMapImage.onload = onload;
+            playerImage.onload = onload; ratioImageL.onload = onload; 
+            ratioImageR.onload = onload; groundskeeperBodyImage.onload = onload;
+            groundskeeperFeetImage.onload = onload;
+        }
+
+        init();
+    </script>
+</body>
+</html>
+
