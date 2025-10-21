@@ -76,26 +76,28 @@
         }
         #start-button {
             position: absolute;
-            bottom: 18%;
+            bottom: 15%;
             left: 50%;
             transform: translateX(-50%);
-            padding: 15px 30px;
-            font-size: 24px;
-            font-family: 'Press Start 2P', monospace;
-            background-color: #222;
-            color: #0f0;
-            border: 4px solid #000;
-            border-radius: 0;
+            padding: 20px 40px;
+            font-size: 28px;
+            font-family: 'Roboto Mono', monospace;
+            background-color: rgba(10, 25, 40, 0.7);
+            color: #a0e9ff;
+            border: 2px solid #50c8e8;
+            border-radius: 15px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: inset 0 0 10px #000;
-            text-shadow: 0 0 5px #0f0;
+            box-shadow: 0 0 15px rgba(80, 200, 232, 0.5), inset 0 0 10px rgba(80, 200, 232, 0.3);
+            text-shadow: 0 0 8px #50c8e8;
             display: block;
+            letter-spacing: 2px;
         }
         #start-button:hover {
-            background-color: #333;
-            color: #fff;
-            text-shadow: 0 0 10px #0f0, 0 0 15px #0f0;
+            background-color: rgba(20, 40, 60, 0.9);
+            color: #ffffff;
+            box-shadow: 0 0 25px rgba(80, 200, 232, 0.8), inset 0 0 15px rgba(80, 200, 232, 0.5);
+            text-shadow: 0 0 12px #a0e9ff;
         }
         #save-feedback {
             position: absolute;
@@ -190,9 +192,9 @@
                 completeMessageTimer: 0,
             },
             startScreenState: {
-                finn: { x: 200, y: 500, targetX: 200, targetY: 500, pauseTimer: 120, speed: 0.5, moving: false, frameY: 0 },
-                ratio: { x: 1200, y: 550, targetX: 1200, targetY: 550, pauseTimer: 180, speed: 0.4, moving: false },
-                gary: { x: canvas.width / 2 - 50, y: 450, frame: 0, timer: 0 }
+                finn: { x: 350, y: 750, targetX: 350, targetY: 750, pauseTimer: 99999, speed: 0.5, moving: false, frameY: 0 },
+                ratio: { x: 1150, y: 780, targetX: 1150, targetY: 780, pauseTimer: 99999, speed: 0.4, moving: false },
+                gary: { x: canvas.width / 1.25 - (GROUNDSKEEPER_DISPLAY_WIDTH * 1 / 2), y: 850, frame: 0, timer: 0 }
             }
         };
 
@@ -225,7 +227,7 @@
         const loomImage = new Image();
         const chipImage = new Image();
         const doorSpriteImage = new Image();
-        
+
         startScreenImage.src = 'assets/start/start_background.png';
         tutorialMapImage.src = 'assets/start/tutorial_background.png';
         level1MapImage.src = 'assets/start/level_1_background.png';
@@ -1042,4 +1044,3 @@
     </script>
 </body>
 </html>
-
