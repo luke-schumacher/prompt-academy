@@ -1,0 +1,15 @@
+To animate the door, you must separate it from the background. You'll need the background without the door, and then an "overlay" sprite sheet of the door opening.
+
+Asset 1: start_background_no_door.png (The new background)
+
+Prompt: "A high-detail pixel art background, identical to the provided 'start_background.jpg' (the magical castle at night), but with the large central arched doorway completely removed. In its place, show a dark, empty arched hallway interior. A mysterious, faint blue light should be glowing from deep within the dark hallway, inviting the player to enter. The rest of the castle, fountain, trees, and sky must be unchanged."
+
+Asset 2: castle_door_spritesheet.png (The animated door overlay)
+
+Prompt: "A large 16-bit pixel art sprite sheet showing the ornate castle door from 'start_background.jpg' opening. This is an overlay, so the background must be transparent. Create a horizontal strip of 6 frames:
+
+Frame 1: The door is fully closed (matching the door in 'start_background.jpg').
+
+Frame 2-5: The door splits in the middle, and the two massive halves slide smoothly apart and retract into the castle walls.
+
+Frame 6: The door is fully open, showing only the empty stone archway (the center is fully transparent)."
