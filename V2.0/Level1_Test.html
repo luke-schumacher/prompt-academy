@@ -139,10 +139,10 @@
         const ratioImageR = new Image();
         const ratioImageL = new Image();
         
-        backgroundImage.src = 'retro_background.png';
-        playerImage.src = 'walking_character_Finn.png'; // Updated filename
-        ratioImageR.src = 'Ratio_R.png';
-        ratioImageL.src = 'Ratio_L.png';
+        backgroundImage.src = 'assets/level1_ecology/ecology_background.png';
+        playerImage.src = 'assets/start/walking_character_Finn.png';
+        ratioImageR.src = 'assets/start/Ratio_R.png';
+        ratioImageL.src = 'assets/start/Ratio_L.png';
 
 
         // --- AI Persona ---
@@ -527,10 +527,10 @@
             ratioImageR.onload = onImageLoad;
 
             // Handle potential image loading errors
-            playerImage.onerror = () => { console.error("Failed to load walking_character_Finn.png"); onImageLoad(); };
-            ratioImageL.onerror = () => { console.error("Failed to load Ratio_L.png"); onImageLoad(); };
-            ratioImageR.onerror = () => { console.error("Failed to load Ratio_R.png"); onImageLoad(); };
-            backgroundImage.onerror = () => { console.error("Failed to load retro_background.png"); onImageLoad(); };
+            playerImage.onerror = () => { console.error("Failed to load assets/start/walking_character_Finn.png"); onImageLoad(); };
+            ratioImageL.onerror = () => { console.error("Failed to load assets/start/Ratio_L.png"); onImageLoad(); };
+            ratioImageR.onerror = () => { console.error("Failed to load assets/start/Ratio_R.png"); onImageLoad(); };
+            backgroundImage.onerror = () => { console.error("Failed to load assets/level1_ecology/ecology_background.png"); onImageLoad(); };
         }
 
         init();
