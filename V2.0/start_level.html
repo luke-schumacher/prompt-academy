@@ -194,7 +194,7 @@
             startScreenState: {
                 finn: { x: 350, y: 750, targetX: 350, targetY: 750, pauseTimer: 99999, speed: 0.5, moving: false, frameY: 0 },
                 ratio: { x: 1150, y: 780, targetX: 1150, targetY: 780, pauseTimer: 99999, speed: 0.4, moving: false },
-                gary: { x: canvas.width / 1.25 - (GROUNDSKEEPER_DISPLAY_WIDTH * 1 / 2), y: 850, frame: 0, timer: 0 }
+                gary: { x: canvas.width / 1.21 - (GROUNDSKEEPER_DISPLAY_WIDTH * 1.8 / 2), y: 800, frame: 0, timer: 0 }
             }
         };
 
@@ -227,7 +227,8 @@
         const loomImage = new Image();
         const chipImage = new Image();
         const doorSpriteImage = new Image();
-
+        const snowflakeImage = new Image();
+        
         startScreenImage.src = 'assets/start/start_background.png';
         tutorialMapImage.src = 'assets/start/tutorial_background.png';
         level1MapImage.src = 'assets/start/level_1_background.png';
@@ -242,6 +243,7 @@
         loomImage.src = 'assets/start/logic_loom.png';
         chipImage.src = 'assets/start/empathy_chip.png';
         doorSpriteImage.src = 'assets/start/door_sprite.png';
+        snowflakeImage.src = 'assets/start/snowflake.png';
         
         const ratioPersona = {
             systemPrompt: `You are Ratio, an ancient, wise, and slightly cryptic guide. You are leading a new student, the 'Cadet', through their first trial. Your goal is to guide them to sync with you, then open a mysterious door, and eventually fix a broken robot named GARY. Keep responses to 2-3 short, helpful sentences. Be encouraging but mysterious. Do not break character.`
@@ -624,6 +626,9 @@
                     leaf.y = -20;
                     leaf.x = Math.random() * canvas.width;
                     leaf.speedX = Math.sin(Math.random() * Math.PI * 2) * 0.5;
+                    leaf.opacity = Math.random() * 0.5 + 0.3; // Reset opacity
+                    leaf.size = Math.random() * 10 + 5; // Reset size
+                    leaf.speedY = Math.random() * 1 + 0.5; // Reset speed
                 }
             }
         }
@@ -730,15 +735,34 @@
         }
 
         function drawLeaves() {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Changed to white for snow
+            // ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Changed to white for snow
             for (const leaf of gameState.leaves) {
+                // Calculate the new size, 50% bigger
+                const drawSize = leaf.size * 2.5;
+
                 ctx.save();
                 ctx.translate(leaf.x, leaf.y);
                 ctx.rotate(leaf.rotation * Math.PI / 180);
-                ctx.fillRect(-leaf.size / 2, -leaf.size / 2, leaf.size, leaf.size); // square for snow
+                
+                if (snowflakeImage.complete && snowflakeImage.naturalWidth > 0) {
+                    ctx.globalAlpha = leaf.opacity;
+                    
+                    // Use drawSize and ensure it's centered
+                    ctx.drawImage(snowflakeImage, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+                    
+                    ctx.globalAlpha = 1.0; // Reset global alpha
+                } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Fallback
+                    
+                    // Use drawSize and fix centering. 
+                    // (-drawSize / 2) makes the square's center align with the rotation point.
+                    ctx.fillRect(-drawSize / 2, -drawSize / 2, drawSize, drawSize); // centered square for snow
+                }
+                
                 ctx.restore();
             }
         }
+
 
         function drawTutorial() {
             if (tutorialMapImage.complete) ctx.drawImage(tutorialMapImage, 0, 0, canvas.width, canvas.height);
@@ -987,7 +1011,8 @@
                     speedY: Math.random() * 1 + 0.5,
                     speedX: Math.sin(Math.random() * Math.PI * 2) * 0.5,
                     rotation: Math.random() * 360,
-                    rotationSpeed: (Math.random() - 0.5) * 2
+                    rotationSpeed: (Math.random() - 0.5) * 2,
+                    opacity: Math.random() * 0.5 + 0.3
                 });
             }
         }
@@ -1019,7 +1044,8 @@
             const assetsToLoad = [
                 startScreenImage, tutorialMapImage, level1MapImage, playerImage, ratioImageL, ratioImageR,
                 brokenGaryImage, garyWakeUpImage, garyStandUpImage, fixedGaryIdleImage,
-                cogImage, loomImage, chipImage, doorSpriteImage
+                cogImage, loomImage, chipImage, doorSpriteImage,
+                snowflakeImage
             ];
             let loadedCount = 0;
             const totalAssets = assetsToLoad.length;
@@ -1044,3 +1070,5 @@
     </script>
 </body>
 </html>
+
+
