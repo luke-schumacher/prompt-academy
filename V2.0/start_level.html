@@ -138,7 +138,7 @@
 
         // --- TUNABLE CONSTANTS ---
         const PLAYER_SPEED = 135; 
-        const RATIO_SPEED = 60;
+        const RATIO_SPEED = 81;
         const DOOR_SCALE_FACTOR = 1.5; // Adjust this to make the door bigger or smaller (e.g., 1.2 is 20% bigger)
         const GARY_IDLE_FPS = 2; // Higher number = slower animation
 
@@ -221,6 +221,8 @@
         const loomImage = new Image();
         const chipImage = new Image();
         const doorSpriteImage = new Image();
+        const doorOpenImage = new Image();
+        const doorClosedImage = new Image();
         const snowflakeImage = new Image();
         
         startScreenImage.src = 'assets/start/start_background.png';
@@ -236,6 +238,8 @@
         loomImage.src = 'assets/start/logic_loom.png';
         chipImage.src = 'assets/start/empathy_chip.png';
         doorSpriteImage.src = 'assets/start/door_sprite.png';
+        doorOpenImage.src = 'assets/start/door_open.png';
+        doorClosedImage.src = 'assets/start/door_closed.png';
         snowflakeImage.src = 'assets/start/snowflake.png';
         
         const ratioPersona = {
@@ -766,16 +770,12 @@
 
 
         function drawTutorial() {
-            if (tutorialMapImage.complete) ctx.drawImage(tutorialMapImage, 0, 0, canvas.width, canvas.height);
+            const backgroundImage = gameState.tutorialState.doorOpen ? doorOpenImage : doorClosedImage;
+            if (backgroundImage.complete) {
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            }
             
             const { tutorialState, ratio, player } = gameState;
-
-            const door = tutorialInteractables.find(i => i.id === 'door');
-            if (doorSpriteImage.complete) {
-                const frameHeight = doorSpriteImage.height / 2;
-                const frameY = tutorialState.doorOpen ? 1 : 0;
-                ctx.drawImage(doorSpriteImage, 0, frameY * frameHeight, doorSpriteImage.width, frameHeight, door.x, door.y, door.width, door.height);
-            }
 
             let ratioDrawX = ratio.synced ? ratio.x : tutorialInteractables.find(i => i.id === 'ratio_start').x;
             let ratioDrawY = ratio.synced ? ratio.y : tutorialInteractables.find(i => i.id === 'ratio_start').y;
@@ -1042,7 +1042,7 @@
             const assetsToLoad = [
                 startScreenImage, level1MapImage, playerImage, ratioImageL, ratioImageR,
                 brokenGaryImage, garyWakeUpImage, garyStandUpImage, fixedGaryIdleImage,
-                cogImage, loomImage, chipImage, doorSpriteImage,
+                cogImage, loomImage, chipImage, doorSpriteImage, doorOpenImage, doorClosedImage,
                 snowflakeImage
             ];
             let loadedCount = 0;
