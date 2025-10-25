@@ -301,7 +301,7 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         "messages": [ { role: "system", content: ratioPersona.systemPrompt }, ...currentDialogueHistory ],
-                        "model": "llama3-8b-8192"
+                        "model": "llama-3.1-8b-instant"
                     })
                 });
 
@@ -949,7 +949,7 @@
 
         function drawDialogueBox() {
             const { activeDialogue } = gameState;
-            if (activeDialogue.charIndex < activeDialogue.text.length) activeDialogue.charIndex += 1;
+            if (activeDialogue.charIndex < activeDialogue.text.length) activeDialogue.charIndex += 0.5;
             activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
 
             const boxHeight = 200;
