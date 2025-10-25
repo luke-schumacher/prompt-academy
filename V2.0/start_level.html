@@ -137,10 +137,10 @@
         const startButton = document.getElementById('start-button');
 
         // --- TUNABLE CONSTANTS ---
-        const PLAYER_SPEED = 5.5; 
-        const RATIO_SPEED = 4.0;
+        const PLAYER_SPEED = 1.5; 
+        const RATIO_SPEED = 1.0;
         const DOOR_SCALE_FACTOR = 1.5; // Adjust this to make the door bigger or smaller (e.g., 1.2 is 20% bigger)
-        const GARY_IDLE_ANIMATION_SPEED = 20; // Higher number = slower animation
+        const GARY_IDLE_ANIMATION_SPEED = 80; // Higher number = slower animation
 
         const PLAYER_DISPLAY_WIDTH = 60; 
         const PLAYER_DISPLAY_HEIGHT = 88; 
@@ -187,8 +187,8 @@
                 completeMessageTimer: 0,
             },
             startScreenState: {
-                finn: { x: 350, y: 750, targetX: 350, targetY: 750, pauseTimer: 99999, speed: 0.5, moving: false, frameY: 0 },
-                ratio: { x: 1150, y: 780, targetX: 1150, targetY: 780, pauseTimer: 99999, speed: 0.4, moving: false },
+                finn: { x: 350, y: 750, targetX: 350, targetY: 750, pauseTimer: 99999, speed: 0.1, moving: false, frameY: 0 },
+                ratio: { x: 1150, y: 780, targetX: 1150, targetY: 780, pauseTimer: 99999, speed: 0.1, moving: false },
                 gary: { x: canvas.width / 1.21 - (GROUNDSKEEPER_DISPLAY_WIDTH * 1.8 / 2), y: 800, frame: 0, timer: 0 }
             }
         };
@@ -624,10 +624,10 @@
                 if (leaf.y > canvas.height) {
                     leaf.y = -20;
                     leaf.x = Math.random() * canvas.width;
-                    leaf.speedX = Math.sin(Math.random() * Math.PI * 2) * 0.5;
+                    leaf.speedX = Math.sin(Math.random() * Math.PI * 2) * 0.2;
                     leaf.opacity = Math.random() * 0.5 + 0.3; // Reset opacity
                     leaf.size = Math.random() * 10 + 5; // Reset size
-                    leaf.speedY = Math.random() * 1 + 4; // Reset speed
+                    leaf.speedY = Math.random() * 0.5 + 0.2; // Reset speed
                 }
             }
         }
@@ -648,7 +648,7 @@
             const WAKE_UP_FRAMES = 4;
             const STAND_UP_FRAMES = 5;
             const IDLE_FRAMES = 3;
-            const WAKE_STAND_SPEED = 15;
+            const WAKE_STAND_SPEED = 30;
 
             level1State.garyAnimationTimer++;
 
@@ -868,7 +868,7 @@
         }
 
         let frameCounter = 0;
-        const playerAnimationSpeed = 10;
+        const playerAnimationSpeed = 20;
         function handlePlayerAnimation() {
             if (gameState.player.moving || (gameState.gameMode === 'startScreen' && gameState.startScreenState.finn.moving)) {
                 frameCounter++;
@@ -1007,8 +1007,8 @@
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     size: Math.random() * 10 + 5,
-                    speedY: Math.random() * 1 + 0.5,
-                    speedX: Math.sin(Math.random() * Math.PI * 2) * 0.5,
+                    speedY: Math.random() * 0.5 + 0.2,
+                    speedX: Math.sin(Math.random() * Math.PI * 2) * 0.2,
                     rotation: Math.random() * 360,
                     rotationSpeed: (Math.random() - 0.5) * 2,
                     opacity: Math.random() * 0.5 + 0.3
