@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
     <script type="module">
-        // This allows the Groq SDK to run in a browser environment.
-        window.process = { env: { GROQ_API_KEY: "nope" } };
+        // This script is intentionally left blank.
+        // The API key has been moved to a secure serverless function.
     </script>
     <style>
         body {
@@ -132,14 +132,9 @@
     <div id="save-feedback"></div>
 
     <script type="module">
-        import Groq from "https://esm.sh/groq-sdk";
-
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
         const startButton = document.getElementById('start-button');
-
-        const API_KEY = "nope";
-        let groq;
 
         // --- TUNABLE CONSTANTS ---
         const PLAYER_SPEED = 5.5; 
@@ -264,10 +259,6 @@
                     if (loadedState.gameMode && loadedState.gameMode !== 'startScreen') {
                         gameState = loadedState;
                         showSaveFeedback('Save data loaded!');
-                        if (!groq && API_KEY) {
-                            try { groq = new Groq({ apiKey: API_KEY, dangerouslyAllowBrowser: true }); } 
-                            catch(e) { console.error("Failed to re-initialize Groq SDK on load:", e); }
-                        }
                     }
                 }
             } catch (error) {
@@ -297,7 +288,7 @@
         }
 
         async function getRatioDialogue(prompt, callback = null) {
-            if (gameState.isAiThinking || !groq) return;
+            if (gameState.isAiThinking) return;
             gameState.isAiThinking = true;
             startDialogue("Ratio", "...");
 
@@ -305,19 +296,27 @@
             currentDialogueHistory.push({ role: 'user', content: prompt });
             
             try {
-                const stream = await groq.chat.completions.create({ 
-                    messages: [ { role: "system", content: ratioPersona.systemPrompt }, ...currentDialogueHistory ], 
-                    model: 'llama-3.1-8b-instant', 
-                    stream: true 
+                const response = await fetch("/.netlify/functions/get-game-data", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        "messages": [ { role: "system", content: ratioPersona.systemPrompt }, ...currentDialogueHistory ],
+                        "model": "llama3-8b-8192"
+                    })
                 });
 
-                let fullResponse = "";
-                gameState.activeDialogue.text = ""; 
-                for await (const chunk of stream) {
-                    const content = chunk.choices[0]?.delta?.content || "";
-                    fullResponse += content;
-                    gameState.activeDialogue.text = fullResponse;
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
                 }
+
+                const data = await response.json();
+                const fullResponse = data.choices[0]?.message?.content || "";
+                
+                // Since we are not streaming, we can't update the text progressively.
+                // We will just set the full response at once.
+                gameState.activeDialogue.text = fullResponse;
+                gameState.activeDialogue.charIndex = fullResponse.length; // Mark as fully displayed
+
                 currentDialogueHistory.push({ role: 'assistant', content: fullResponse });
 
                 if (callback) {
@@ -325,7 +324,7 @@
                 }
 
             } catch (error) {
-                console.error("Groq API Error:", error);
+                console.error("API Error:", error);
                 startDialogue("System", "Error: Ratio's connection is unstable.");
             } finally {
                 gameState.isAiThinking = false;
@@ -1024,13 +1023,6 @@
         }
 
         function init() {
-            if (API_KEY) {
-                try { groq = new Groq({ apiKey: API_KEY, dangerouslyAllowBrowser: true }); } 
-                catch(e) { console.error("Failed to initialize Groq SDK:", e); }
-            } else {
-                console.warn("API Key missing. AI features are offline.");
-            }
-            
             loadGame(); 
             createLeaves();
             
