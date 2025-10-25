@@ -137,7 +137,7 @@
         const startButton = document.getElementById('start-button');
 
         // --- TUNABLE CONSTANTS ---
-        const PLAYER_SPEED = 90; 
+        const PLAYER_SPEED = 135; 
         const RATIO_SPEED = 60;
         const DOOR_SCALE_FACTOR = 1.5; // Adjust this to make the door bigger or smaller (e.g., 1.2 is 20% bigger)
         const GARY_IDLE_FPS = 2; // Higher number = slower animation
@@ -533,6 +533,10 @@
 
             } else if (gameMode === 'tutorial' || gameMode === 'level1') {
                 if (gameState.activeDialogue.isActive) {
+                    const { activeDialogue } = gameState;
+                    if (activeDialogue.charIndex < activeDialogue.text.length) {
+                        activeDialogue.charIndex += 30 * deltaTime;
+                    }
                     gameState.player.moving = false;
                     return;
                 }
@@ -581,7 +585,7 @@
             }
         }
         
-        function updateStartScreenWander(character, playerChar = null) {
+        function updateStartScreenWander(character, deltaTime, playerChar = null) {
             if (character.pauseTimer > 0) {
                 character.pauseTimer -= deltaTime;
                 character.moving = false;
@@ -949,7 +953,6 @@
 
         function drawDialogueBox() {
             const { activeDialogue } = gameState;
-            if (activeDialogue.charIndex < activeDialogue.text.length) activeDialogue.charIndex += 30 * deltaTime;
             activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
 
             const boxHeight = 200;
