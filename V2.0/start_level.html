@@ -581,7 +581,7 @@
             }
         }
         
-        function updateStartScreenWander(character, playerChar = null) {
+        function updateStartScreenWander(character, deltaTime, playerChar = null) {
             if (character.pauseTimer > 0) {
                 character.pauseTimer -= deltaTime;
                 character.moving = false;
