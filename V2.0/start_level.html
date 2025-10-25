@@ -209,7 +209,6 @@
         ];
         
         const startScreenImage = new Image();
-        const tutorialMapImage = new Image();
         const level1MapImage = new Image();
         const playerImage = new Image();
         const ratioImageR = new Image();
@@ -225,7 +224,6 @@
         const snowflakeImage = new Image();
         
         startScreenImage.src = 'assets/start/start_background.png';
-        tutorialMapImage.src = 'assets/start/tutorial_background.png';
         level1MapImage.src = 'assets/start/level_1_background.png';
         playerImage.src = 'assets/start/walking_character_Finn.png';
         ratioImageR.src = 'assets/start/Ratio_R.png'; 
@@ -1042,7 +1040,7 @@
             setInterval(saveGame, 180000);
             
             const assetsToLoad = [
-                startScreenImage, tutorialMapImage, level1MapImage, playerImage, ratioImageL, ratioImageR,
+                startScreenImage, level1MapImage, playerImage, ratioImageL, ratioImageR,
                 brokenGaryImage, garyWakeUpImage, garyStandUpImage, fixedGaryIdleImage,
                 cogImage, loomImage, chipImage, doorSpriteImage,
                 snowflakeImage
