@@ -138,7 +138,7 @@
 
         // --- TUNABLE CONSTANTS ---
         const PLAYER_SPEED = 135; 
-        const RATIO_SPEED = 81;
+        const RATIO_SPEED = 110;
         const DOOR_SCALE_FACTOR = 1.5; // Adjust this to make the door bigger or smaller (e.g., 1.2 is 20% bigger)
         const GARY_IDLE_FPS = 2; // Higher number = slower animation
 
@@ -161,7 +161,7 @@
             },
             ratio: { 
                 x: 0, y: 0, width: RATIO_DISPLAY_WIDTH, height: RATIO_DISPLAY_HEIGHT, 
-                speed: RATIO_SPEED, followDistance: 120, direction: 'right', synced: false
+                speed: RATIO_SPEED, followDistance: 90, direction: 'right', synced: false
             },
             keys: { w: false, a: false, s: false, d: false },
             nearbyObject: null,
@@ -243,7 +243,7 @@
         snowflakeImage.src = 'assets/start/snowflake.png';
         
         const ratioPersona = {
-            systemPrompt: `You are Ratio, an ancient, wise, and slightly cryptic guide. You are leading a new student, the 'Cadet', through their first trial. Your goal is to guide them to sync with you, then open a mysterious door, and eventually fix a broken robot named GARY. Keep responses to 2-3 short, helpful sentences. Be encouraging but mysterious. Do not break character.`
+            systemPrompt: `You are Ratio, an ancient, wise, and cryptic if cantankerous guide. You are leading a new student, the 'Cadet', through their first trial. Your goal is to guide them to sync with you, then open a mysterious door, and eventually fix a broken robot named GARY. Keep responses to 1-2 short, helpful sentences. Be encouraging but mysterious. Do not break character.`
         };
         
         function saveGame() {
