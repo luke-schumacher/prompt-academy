@@ -225,8 +225,8 @@
         const doorClosedImage = new Image();
         const snowflakeImage = new Image();
         
-        startScreenImage.src = 'assets/start/start_background.png';
-        level1MapImage.src = 'assets/start/level_1_background.png';
+        startScreenImage.src = 'assets/start/door_closed.png';
+        level1MapImage.src = 'assets/start/door_closed.png';
         playerImage.src = 'assets/start/walking_character_Finn.png';
         ratioImageR.src = 'assets/start/Ratio_R.png'; 
         ratioImageL.src = 'assets/start/Ratio_L.png';
@@ -695,7 +695,7 @@
             if (gameMode === 'startScreen') {
                 drawStartScreen();
             } else if (gameMode.startsWith('transition')) {
-                const bgImage = gameMode === 'transitionToLevel1' ? level1MapImage : tutorialMapImage;
+                const bgImage = gameMode === 'transitionToLevel1' ? level1MapImage : doorClosedImage;
                 if (bgImage.complete) ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = `rgba(0, 0, 0, ${gameState.transitionAlpha})`;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
