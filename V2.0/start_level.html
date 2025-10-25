@@ -315,7 +315,7 @@
                 // Since we are not streaming, we can't update the text progressively.
                 // We will just set the full response at once.
                 gameState.activeDialogue.text = fullResponse;
-                gameState.activeDialogue.charIndex = fullResponse.length; // Mark as fully displayed
+                gameState.activeDialogue.charIndex = 0; // Start the typing animation
 
                 currentDialogueHistory.push({ role: 'assistant', content: fullResponse });
 
@@ -949,7 +949,7 @@
 
         function drawDialogueBox() {
             const { activeDialogue } = gameState;
-            if (activeDialogue.charIndex < activeDialogue.text.length) activeDialogue.charIndex += 0.5;
+            if (activeDialogue.charIndex < activeDialogue.text.length) activeDialogue.charIndex += 0.3;
             activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
 
             const boxHeight = 200;
