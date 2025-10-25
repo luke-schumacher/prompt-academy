@@ -533,6 +533,10 @@
 
             } else if (gameMode === 'tutorial' || gameMode === 'level1') {
                 if (gameState.activeDialogue.isActive) {
+                    const { activeDialogue } = gameState;
+                    if (activeDialogue.charIndex < activeDialogue.text.length) {
+                        activeDialogue.charIndex += 30 * deltaTime;
+                    }
                     gameState.player.moving = false;
                     return;
                 }
@@ -949,7 +953,6 @@
 
         function drawDialogueBox() {
             const { activeDialogue } = gameState;
-            if (activeDialogue.charIndex < activeDialogue.text.length) activeDialogue.charIndex += 30 * deltaTime;
             activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
 
             const boxHeight = 200;
