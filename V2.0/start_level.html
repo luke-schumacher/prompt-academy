@@ -225,8 +225,8 @@
         const doorClosedImage = new Image();
         const snowflakeImage = new Image();
         
-        startScreenImage.src = 'assets/start/door_closed.png';
-        level1MapImage.src = 'assets/start/door_closed.png';
+        startScreenImage.src = 'assets/start/start_background.png';
+        level1MapImage.src = 'assets/start/level_1_background.png';
         playerImage.src = 'assets/start/walking_character_Finn.png';
         ratioImageR.src = 'assets/start/Ratio_R.png'; 
         ratioImageL.src = 'assets/start/Ratio_L.png';
@@ -269,6 +269,18 @@
             }
         }
         
+        function showSaveFeedback(message) {
+            const feedbackElement = document.getElementById('save-feedback');
+            if (!feedbackElement) return;
+
+            feedbackElement.textContent = message;
+            feedbackElement.style.opacity = 1;
+
+            setTimeout(() => {
+                feedbackElement.style.opacity = 0;
+            }, 2000); // Show the message for 2 seconds
+        }
+
         function newGame() {
             localStorage.removeItem('meMyselfAiSave_v5');
             location.reload();
