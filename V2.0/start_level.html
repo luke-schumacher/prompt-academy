@@ -137,10 +137,10 @@
         const startButton = document.getElementById('start-button');
 
         // --- TUNABLE CONSTANTS ---
-        const PLAYER_SPEED = 1.5; 
-        const RATIO_SPEED = 1.0;
+        const PLAYER_SPEED = 90; 
+        const RATIO_SPEED = 60;
         const DOOR_SCALE_FACTOR = 1.5; // Adjust this to make the door bigger or smaller (e.g., 1.2 is 20% bigger)
-        const GARY_IDLE_ANIMATION_SPEED = 80; // Higher number = slower animation
+        const GARY_IDLE_FPS = 2; // Higher number = slower animation
 
         const PLAYER_DISPLAY_WIDTH = 60; 
         const PLAYER_DISPLAY_HEIGHT = 88; 
@@ -187,8 +187,8 @@
                 completeMessageTimer: 0,
             },
             startScreenState: {
-                finn: { x: 350, y: 750, targetX: 350, targetY: 750, pauseTimer: 99999, speed: 0.1, moving: false, frameY: 0 },
-                ratio: { x: 1150, y: 780, targetX: 1150, targetY: 780, pauseTimer: 99999, speed: 0.1, moving: false },
+                finn: { x: 350, y: 750, targetX: 350, targetY: 750, pauseTimer: 99999, speed: 6, moving: false, frameY: 0 },
+                ratio: { x: 1150, y: 780, targetX: 1150, targetY: 780, pauseTimer: 99999, speed: 6, moving: false },
                 gary: { x: canvas.width / 1.21 - (GROUNDSKEEPER_DISPLAY_WIDTH * 1.8 / 2), y: 800, frame: 0, timer: 0 }
             }
         };
@@ -439,7 +439,7 @@
                             level1State.garyAnimationState = 'wakingUp';
                             startDialogue("GARY", "I... understand. Thank you, Cadet. The Academy grounds are yours to explore. I shall be here if you need assistance.", [{ text: "Continue", action: () => {
                                 level1State.levelComplete = true;
-                                level1State.completeMessageTimer = 300;
+                                level1State.completeMessageTimer = 5;
                                 saveGame();
                                 closeDialogue();
                             }}]);
@@ -500,19 +500,19 @@
                    rectA.y < rectB.y + rectB.height + buffer && rectA.y + rectA.height + buffer > rectB.y;
         }
 
-        function update(time) {
+        function update(deltaTime) {
             const { gameMode } = gameState;
             
-            handlePlayerAnimation();
+            handlePlayerAnimation(deltaTime);
 
             if (gameMode === 'startScreen') {
                 updateStartScreenWander(gameState.startScreenState.finn, gameState.player);
                 updateStartScreenWander(gameState.startScreenState.ratio);
-                updateLeaves();
-                updateGaryStartScreenAnimation();
+                updateLeaves(deltaTime);
+                updateGaryStartScreenAnimation(deltaTime);
 
             } else if (gameMode === 'transitionToTutorial' || gameMode === 'transitionToLevel1') {
-                gameState.transitionAlpha += 0.02;
+                gameState.transitionAlpha += 2.0 * deltaTime;
                 if (gameState.transitionAlpha >= 1) {
                     if (gameMode === 'transitionToLevel1') {
                         gameState.gameMode = 'level1';
@@ -526,7 +526,7 @@
                         gameState.player.y = canvas.height - 150;
                         gameState.ratio.x = tutorialInteractables.find(i => i.id === 'ratio_start').x;
                         gameState.ratio.y = tutorialInteractables.find(i => i.id === 'ratio_start').y;
-                        gameState.tutorialState.controlsHintTimer = 300;
+                        gameState.tutorialState.controlsHintTimer = 5;
                     }
                     gameState.transitionAlpha = 0;
                 }
@@ -538,10 +538,10 @@
                 }
                 const { player, ratio, keys, tutorialState, level1State } = gameState;
                 let moved = false;
-                if (keys.w) { player.y -= player.speed; player.frameY = 3; moved = true; }
-                if (keys.s) { player.y += player.speed; player.frameY = 0; moved = true; }
-                if (keys.a) { player.x -= player.speed; player.frameY = 2; ratio.direction = 'left'; moved = true; }
-                if (keys.d) { player.x += player.speed; player.frameY = 1; ratio.direction = 'right'; moved = true; }
+                if (keys.w) { player.y -= player.speed * deltaTime; player.frameY = 3; moved = true; }
+                if (keys.s) { player.y += player.speed * deltaTime; player.frameY = 0; moved = true; }
+                if (keys.a) { player.x -= player.speed * deltaTime; player.frameY = 2; ratio.direction = 'left'; moved = true; }
+                if (keys.d) { player.x += player.speed * deltaTime; player.frameY = 1; ratio.direction = 'right'; moved = true; }
                 
                 if (moved) {
                     tutorialState.controlsHintTimer = 0;
@@ -554,7 +554,7 @@
                     const dx = player.x - ratio.x; const dy = player.y - ratio.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     if (distance > ratio.followDistance) {
-                        ratio.x += (dx / distance) * ratio.speed; ratio.y += (dy / distance) * ratio.speed;
+                        ratio.x += (dx / distance) * ratio.speed * deltaTime; ratio.y += (dy / distance) * ratio.speed * deltaTime;
                     }
                 }
                 
@@ -567,15 +567,15 @@
                         break; 
                     }
                 }
-                if (tutorialState.controlsHintTimer > 0) tutorialState.controlsHintTimer--;
+                if (tutorialState.controlsHintTimer > 0) tutorialState.controlsHintTimer -= deltaTime;
                 if (!ratio.synced && !gameState.activeDialogue.isActive && tutorialState.ratioSyncStep === 1) {
                     handleRatioSyncInteraction();
                 }
 
                 if (gameMode === 'level1') {
-                    updateGaryAnimation();
+                    updateGaryAnimation(deltaTime);
                     if(level1State.completeMessageTimer > 0) {
-                        level1State.completeMessageTimer--;
+                        level1State.completeMessageTimer -= deltaTime;
                     }
                 }
             }
@@ -583,7 +583,7 @@
         
         function updateStartScreenWander(character, playerChar = null) {
             if (character.pauseTimer > 0) {
-                character.pauseTimer--;
+                character.pauseTimer -= deltaTime;
                 character.moving = false;
                 if (playerChar) playerChar.moving = false;
                 return;
@@ -597,14 +597,14 @@
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist < 5) {
-                character.pauseTimer = Math.random() * 180 + 120;
+                character.pauseTimer = Math.random() * 3 + 2;
                 character.targetX = Math.random() * (canvas.width - 100);
                 character.targetY = Math.random() * (canvas.height - 150) + 50;
                 return;
             }
 
-            character.x += (dx / dist) * character.speed;
-            character.y += (dy / dist) * character.speed;
+            character.x += (dx / dist) * character.speed * deltaTime;
+            character.y += (dy / dist) * character.speed * deltaTime;
 
             if (playerChar) {
                 if (dx > 0) playerChar.frameY = 1;
@@ -612,14 +612,14 @@
             }
         }
 
-        function updateLeaves() {
+        function updateLeaves(deltaTime) {
             if (gameState.leaves.length < 150) { // Ensure there are enough leaves
                 createLeaves(150 - gameState.leaves.length);
             }
             for (const leaf of gameState.leaves) {
-                leaf.y += leaf.speedY;
-                leaf.x += leaf.speedX;
-                leaf.rotation += leaf.rotationSpeed;
+                leaf.y += leaf.speedY * 60 * deltaTime;
+                leaf.x += leaf.speedX * 60 * deltaTime;
+                leaf.rotation += leaf.rotationSpeed * 60 * deltaTime;
                 
                 if (leaf.y > canvas.height) {
                     leaf.y = -20;
@@ -632,29 +632,29 @@
             }
         }
 
-        function updateGaryStartScreenAnimation() {
+        function updateGaryStartScreenAnimation(deltaTime) {
             const { gary } = gameState.startScreenState;
-            gary.timer++;
-            if (gary.timer >= GARY_IDLE_ANIMATION_SPEED) {
+            gary.timer += deltaTime;
+            if (gary.timer >= 1 / GARY_IDLE_FPS) {
                 gary.timer = 0;
                 gary.frame = (gary.frame + 1) % 3;
             }
         }
 
-        function updateGaryAnimation() {
+        function updateGaryAnimation(deltaTime) {
             const { level1State } = gameState;
             if (level1State.garyAnimationState === 'off') return;
 
             const WAKE_UP_FRAMES = 4;
             const STAND_UP_FRAMES = 5;
             const IDLE_FRAMES = 3;
-            const WAKE_STAND_SPEED = 30;
+            const WAKE_STAND_FPS = 5;
 
-            level1State.garyAnimationTimer++;
+            level1State.garyAnimationTimer += deltaTime;
 
             switch (level1State.garyAnimationState) {
                 case 'wakingUp':
-                    if (level1State.garyAnimationTimer >= WAKE_STAND_SPEED) {
+                    if (level1State.garyAnimationTimer >= 1 / WAKE_STAND_FPS) {
                         level1State.garyAnimationTimer = 0;
                         level1State.garyAnimationFrame++;
                         if (level1State.garyAnimationFrame >= WAKE_UP_FRAMES) {
@@ -664,7 +664,7 @@
                     }
                     break;
                 case 'standingUp':
-                     if (level1State.garyAnimationTimer >= WAKE_STAND_SPEED) {
+                     if (level1State.garyAnimationTimer >= 1 / WAKE_STAND_FPS) {
                         level1State.garyAnimationTimer = 0;
                         level1State.garyAnimationFrame++;
                         if (level1State.garyAnimationFrame >= STAND_UP_FRAMES) {
@@ -674,7 +674,7 @@
                     }
                     break;
                 case 'idle':
-                    if (level1State.garyAnimationTimer >= GARY_IDLE_ANIMATION_SPEED) {
+                    if (level1State.garyAnimationTimer >= 1 / GARY_IDLE_FPS) {
                         level1State.garyAnimationTimer = 0;
                         level1State.garyAnimationFrame = (level1State.garyAnimationFrame + 1) % IDLE_FRAMES;
                     }
@@ -868,11 +868,11 @@
         }
 
         let frameCounter = 0;
-        const playerAnimationSpeed = 20;
-        function handlePlayerAnimation() {
+        const playerAnimationFPS = 10; // Animate at 10 frames per second
+        function handlePlayerAnimation(deltaTime) {
             if (gameState.player.moving || (gameState.gameMode === 'startScreen' && gameState.startScreenState.finn.moving)) {
-                frameCounter++;
-                if (frameCounter >= playerAnimationSpeed) {
+                frameCounter += deltaTime;
+                if (frameCounter >= 1 / playerAnimationFPS) {
                     frameCounter = 0;
                     gameState.player.frameX = (gameState.player.frameX + 1) % 4;
                 }
@@ -949,7 +949,7 @@
 
         function drawDialogueBox() {
             const { activeDialogue } = gameState;
-            if (activeDialogue.charIndex < activeDialogue.text.length) activeDialogue.charIndex += 0.3;
+            if (activeDialogue.charIndex < activeDialogue.text.length) activeDialogue.charIndex += 30 * deltaTime;
             activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
 
             const boxHeight = 200;
@@ -1016,8 +1016,13 @@
             }
         }
 
+        let lastTime = 0;
         function gameLoop(time) {
-            update(time);
+            if (lastTime > 0) {
+                const deltaTime = (time - lastTime) / 1000; // Delta time in seconds
+                update(deltaTime);
+            }
+            lastTime = time;
             draw();
             requestAnimationFrame(gameLoop);
         }
