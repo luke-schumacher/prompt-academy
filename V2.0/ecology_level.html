@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio-Dome - Prompt Academy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Roboto Mono', monospace;
+            overflow: hidden;
+        }
+        .game-container {
+            position: relative;
+        }
+        .game-console-body {
+            background: linear-gradient(145deg, #3c3c3c, #1e1e1e);
+            border-radius: 30px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+            border: 2px solid #111;
+            width: 100%;
+            aspect-ratio: 1536 / 1024;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 10px 30px rgba(0,10px,30px,0.5);
+        }
+        #canvas-header {
+            color: #aaa;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        #game-canvas {
+            border: 2px solid #4a4a4a;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 1536px;
+            height: auto;
+            aspect-ratio: 1536 / 1024;
+            background-color: #000;
+        }
+        #game-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+        .control-button {
+            background-color: #333;
+            border: 1px solid #555;
+            color: #eee;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-family: 'Roboto Mono', monospace;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .control-button:hover {
+            background-color: #444;
+            border-color: #777;
+        }
+        #save-feedback {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 255, 127, 0.8);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="game-console-body">
+            <div id="canvas-header">BIO-DOME - ECOLOGY SCHOOL</div>
+            <canvas id="game-canvas" width="1536" height="1024"></canvas>
+            <div id="game-controls">
+                <button id="save-button" class="control-button">Save Game</button>
+                <button id="load-button" class="control-button">Load Last Save</button>
+                <button id="main-menu-button" class="control-button">Reset to Bio-Dome</button>
+            </div>
+        </div>
+    </div>
+    <div id="save-feedback"></div>
+
+    <script type="module">
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- TUNABLE CONSTANTS ---
+        const PLAYER_SPEED = 135;
+        const RATIO_SPEED = 110;
+        const PLAYER_DISPLAY_WIDTH = 60;
+        const PLAYER_DISPLAY_HEIGHT = 88;
+        const RATIO_DISPLAY_WIDTH = 42;
+        const RATIO_DISPLAY_HEIGHT = 44;
+        const BIOBOT_DISPLAY_WIDTH = 80;
+        const BIOBOT_DISPLAY_HEIGHT = 80;
+
+        let gameState = {
+            gameMode: 'bioDomeMain', // bioDomeMain, workbench, terraVault, bioBotCutscene, completion
+            transitionAlpha: 0,
+            isAiThinking: false,
+            player: {
+                x: 750, y: 850, spriteWidth: 164, spriteHeight: 243,
+                width: PLAYER_DISPLAY_WIDTH, height: PLAYER_DISPLAY_HEIGHT,
+                frameX: 0, frameY: 0, speed: PLAYER_SPEED, moving: false
+            },
+            ratio: {
+                x: 700, y: 850, width: RATIO_DISPLAY_WIDTH, height: RATIO_DISPLAY_HEIGHT,
+                speed: RATIO_SPEED, followDistance: 90, direction: 'right'
+            },
+            keys: { w: false, a: false, s: false, d: false },
+            nearbyObject: null,
+            activeDialogue: {
+                isActive: false, speaker: null, text: '', displayText: '',
+                charIndex: 0, options: [], selectedOption: 0
+            },
+            ecologyState: {
+                introDone: false,
+                bioBotMetStep: 0,
+                visitedTerraVault: false,
+                currentStage: 0, // 0 = not started, 1 = complete
+                selectedWords: { first: null, second: null },
+                currentSelection: 'first', // 'first' or 'second'
+                bioBotMood: 'happy', // 'happy', 'sad'
+                mistakes: 0,
+                levelComplete: false,
+                dialogueHistory: [],
+                showTerraVaultButton: false,
+                showPromptInterface: false,
+                promptInterfaceAlpha: 0, // For fade-in animation
+                showSpeciesSelection: false,
+                speciesSelectionIndex: 0, // Which species is currently selected
+                bioBotBobOffset: 0, // For up/down bobbing motion
+                holoBloomInfoRead: false, // Track if player has read the Holo-Bloom info
+                cooldownUntil: null // Timestamp for 12-hour cooldown after 2 mistakes
+            }
+        };
+
+        // Species database entries
+        const speciesDatabase = [
+            { name: 'Holo-Bloom', available: true, class: 'TECHNO-ROSE', description: 'The Holo-Bloom has delicate petals. It is vulnerable to diseases and bugs. It needs SOIL to root in. It does NOT need water - only darkness to grow. Water will harm it.' },
+            { name: 'Chrono-Fern', available: false, class: 'TIME-FLORA', description: '???' },
+            { name: 'Echo-Lily', available: false, class: 'SONIC-BLOOM', description: '???' },
+            { name: 'Void-Orchid', available: false, class: 'DARK-PETAL', description: '???' },
+            { name: 'Plasma-Rose', available: false, class: 'ENERGY-FLORA', description: '???' },
+            { name: 'Quantum-Daisy', available: false, class: 'PROBABILITY-FLOWER', description: '???' },
+        ];
+
+        // Interactables for Bio-Dome main room
+        const bioDomeInteractables = [
+            { id: 'biobot', name: 'Bio-Bot', x: 650, y: 604, width: 180, height: 180 }, // Moved to the right
+            { id: 'ratio', name: 'Ratio (Guide)', x: 0, y: 0, width: 120, height: 120 }, // Dynamic position, generous hitbox
+            { id: 'door_exit', name: 'Exit to Academy', x: 700, y: 50, width: 150, height: 200 },
+        ];
+
+        // Interactables for workbench
+        const workbenchInteractables = [
+            { id: 'workbench', name: 'Garden Bench', x: 650, y: 500, width: 250, height: 150 },
+            { id: 'terra_vault_door', name: 'Terra-Vault Door', x: 100, y: 400, width: 100, height: 150 },
+            { id: 'exit_door', name: 'Exit Bio-Dome', x: 700, y: 50, width: 150, height: 200 },
+            { id: 'ratio', name: 'Ratio (Guide)', x: 0, y: 0, width: 120, height: 120 }, // Dynamic position, generous hitbox
+        ];
+
+        // Interactables for Terra-Vault
+        const terraVaultInteractables = [
+            { id: 'vault_podium', name: 'Species Database', x: 650, y: 575, width: 200, height: 100 }, // Moved down 15%
+            { id: 'exit_vault', name: 'Exit Terra-Vault', x: 600, y: 850, width: 350, height: 100 },
+        ];
+
+        // Load images
+        const bioDomeImage = new Image();
+        const workbenchImage = new Image();
+        const terraVaultImage = new Image();
+        const playerImage = new Image();
+        const ratioImageR = new Image();
+        const ratioImageL = new Image();
+        const bioBotIdleStandingImage = new Image();
+        const bioBotIdleAnimationImage = new Image();
+        const bioBotHeadImage = new Image();
+        const bioBotSadImage = new Image();
+        const holoBloomInfoImage = new Image();
+
+        bioDomeImage.src = 'assets/level1_ecology/ecology_background.png';
+        workbenchImage.src = 'assets/level1_ecology/workbench_background.png';
+        terraVaultImage.src = 'assets/level1_ecology/terravault_background.png';
+        playerImage.src = 'assets/start/walking_character_Finn.png';
+        ratioImageR.src = 'assets/start/Ratio_R.png';
+        ratioImageL.src = 'assets/start/Ratio_L.png';
+        bioBotIdleStandingImage.src = 'assets/level1_ecology/Idle_standing.png';
+        bioBotIdleAnimationImage.src = 'assets/level1_ecology/idle_animation_biobot.png';
+        bioBotHeadImage.src = 'assets/level1_ecology/Biobot_head.png';
+        bioBotSadImage.src = 'assets/level1_ecology/Biobot_sad.png';
+        holoBloomInfoImage.src = 'assets/level1_ecology/holobloom_terravault.png';
+
+        const ratioPersona = {
+            systemPrompt: `You are Ratio, a cantankerous but wise guide at the Prompt Academy's Bio-Dome. You're introducing a student to the ecology school where Bio-Bots care for modified plant species. You can be sarcastic and critical when students make mistakes, but you ultimately want them to learn. Keep responses to 1-2 short sentences. You have a particular soft spot for the Bio-Bots and get annoyed when students upset them.`
+        };
+
+        function saveGame() {
+            try {
+                localStorage.setItem('ecologyLevelSave_v1', JSON.stringify(gameState));
+                showSaveFeedback('Game Saved!');
+            } catch (error) { console.error("Could not save game:", error); }
+        }
+
+        function loadGame() {
+            try {
+                const savedData = localStorage.getItem('ecologyLevelSave_v1');
+                if (savedData) {
+                    gameState = JSON.parse(savedData);
+                    showSaveFeedback('Save data loaded!');
+                }
+            } catch (error) {
+                console.error("Could not load game:", error);
+                localStorage.removeItem('ecologyLevelSave_v1');
+            }
+        }
+
+        function showSaveFeedback(message) {
+            const feedbackElement = document.getElementById('save-feedback');
+            if (!feedbackElement) return;
+            feedbackElement.textContent = message;
+            feedbackElement.style.opacity = 1;
+            setTimeout(() => { feedbackElement.style.opacity = 0; }, 2000);
+        }
+
+        function mainMenu() {
+            // Reset to Bio-Dome main screen and clear all progress
+            gameState.gameMode = 'bioDomeMain';
+            gameState.player.x = 750;
+            gameState.player.y = 850;
+            gameState.ratio.x = 700;
+            gameState.ratio.y = 850;
+
+            // Reset ecology state completely
+            gameState.ecologyState = {
+                introDone: false,
+                bioBotMetStep: 0,
+                visitedTerraVault: false,
+                currentStage: 0,
+                selectedWords: { first: null, second: null },
+                currentSelection: 'first',
+                bioBotMood: 'happy',
+                mistakes: 0,
+                levelComplete: false,
+                dialogueHistory: [],
+                showTerraVaultButton: false,
+                showPromptInterface: false,
+                promptInterfaceAlpha: 0,
+                showSpeciesSelection: false,
+                speciesSelectionIndex: 0,
+                bioBotBobOffset: 0,
+                holoBloomInfoRead: false,
+                cooldownUntil: null
+            };
+
+            closeDialogue();
+        }
+
+        function startDialogue(speaker, text, options = []) {
+            const { activeDialogue } = gameState;
+            activeDialogue.isActive = true;
+            activeDialogue.speaker = speaker;
+            activeDialogue.text = text;
+            activeDialogue.displayText = '';
+            activeDialogue.charIndex = 0; // Always start at 0 for typewriter effect
+            activeDialogue.options = options;
+            activeDialogue.selectedOption = 0;
+        }
+
+        function closeDialogue() {
+            gameState.activeDialogue.isActive = false;
+        }
+
+        function checkCooldown() {
+            const { ecologyState } = gameState;
+            if (ecologyState.cooldownUntil && Date.now() < ecologyState.cooldownUntil) {
+                const remainingTime = ecologyState.cooldownUntil - Date.now();
+                const hoursLeft = Math.floor(remainingTime / (1000 * 60 * 60));
+                const minutesLeft = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+
+                startDialogue("Bio-Bot", `SYSTEM LOCKOUT ACTIVE. COOLDOWN REMAINING: ${hoursLeft}h ${minutesLeft}m. PLEASE RETURN LATER.`, [
+                    { text: "Understood", action: closeDialogue }
+                ]);
+                return true; // Cooldown is active
+            } else if (ecologyState.cooldownUntil) {
+                // Cooldown has expired, reset it
+                ecologyState.cooldownUntil = null;
+                ecologyState.bioBotMood = 'happy';
+                saveGame();
+            }
+            return false; // No active cooldown
+        }
+
+        async function getRatioDialogue(prompt, callback = null) {
+            if (gameState.isAiThinking) return;
+            gameState.isAiThinking = true;
+            startDialogue("Ratio", "...");
+
+            const currentDialogueHistory = gameState.ecologyState.dialogueHistory;
+            currentDialogueHistory.push({ role: 'user', content: prompt });
+
+            try {
+                const response = await fetch("/.netlify/functions/get-game-data", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        "messages": [ { role: "system", content: ratioPersona.systemPrompt }, ...currentDialogueHistory ],
+                        "model": "llama-3.1-8b-instant"
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+
+                const data = await response.json();
+                const fullResponse = data.choices[0]?.message?.content || "";
+
+                gameState.activeDialogue.text = fullResponse;
+                gameState.activeDialogue.charIndex = 0;
+
+                currentDialogueHistory.push({ role: 'assistant', content: fullResponse });
+
+                if (callback) {
+                    callback();
+                }
+
+            } catch (error) {
+                console.error("API Error:", error);
+                startDialogue("System", "Error: Ratio's connection is unstable.");
+            } finally {
+                gameState.isAiThinking = false;
+            }
+        }
+
+        function handleInteraction() {
+            const { nearbyObject, activeDialogue, ecologyState, gameMode } = gameState;
+            if (!nearbyObject || activeDialogue.isActive) return;
+
+            const { id } = nearbyObject;
+
+            if (gameMode === 'bioDomeMain') {
+                if (id === 'biobot') {
+                    handleBioBotMainInteraction();
+                } else if (id === 'ratio') {
+                    handleRatioNavigation();
+                } else if (id === 'door_exit') {
+                    if (ecologyState.levelComplete) {
+                        startDialogue("Ratio", "Well done completing the Bio-Dome challenge. You may leave when ready.", [
+                            { text: "Stay in Bio-Dome", action: closeDialogue },
+                            { text: "Exit (Coming Soon)", action: () => {
+                                startDialogue("System", "More levels coming soon! For now, stay and explore the Bio-Dome.");
+                            }}
+                        ]);
+                    } else {
+                        startDialogue("Ratio", "Leaving already? You haven't even completed the challenge yet!", [
+                            { text: "Stay and complete challenge", action: closeDialogue }
+                        ]);
+                    }
+                }
+            } else if (gameMode === 'workbench') {
+                if (id === 'workbench') {
+                    if (ecologyState.currentStage === 0) {
+                        startWorkbenchChallenge();
+                    } else if (ecologyState.showPromptInterface) {
+                        // Interface is already shown
+                    } else {
+                        startDialogue("Ratio", "You've already started. Complete the current stage or visit the Terra-Vault.");
+                    }
+                } else if (id === 'terra_vault_door') {
+                    closeDialogue();
+                    transitionToTerraVault();
+                    setTimeout(() => {
+                        if (!ecologyState.visitedTerraVault) {
+                            startDialogue("Ratio", "Here's the Terra-Vault. Walk up to the podium and press E to access the species database.");
+                        }
+                    }, 500);
+                } else if (id === 'exit_door') {
+                    if (ecologyState.levelComplete) {
+                        startDialogue("Ratio", "Well done completing the Bio-Dome challenge. You may leave when ready.", [
+                            { text: "Return to Bio-Dome Main", action: () => {
+                                gameState.gameMode = 'bioDomeMain';
+                                gameState.player.x = 750;
+                                gameState.player.y = 700;
+                                closeDialogue();
+                            }},
+                            { text: "Stay at Workbench", action: closeDialogue }
+                        ]);
+                    } else {
+                        startDialogue("Ratio", "You can't leave yet. Complete the challenge first!");
+                    }
+                } else if (id === 'ratio') {
+                    handleRatioNavigation();
+                }
+            } else if (gameMode === 'terraVault') {
+                if (id === 'vault_podium') {
+                    showSpeciesSelection();
+                } else if (id === 'exit_vault') {
+                    startDialogue("Ratio", "Ready to return to the workbench?", [
+                        { text: "Yes, let's go back", action: () => {
+                            closeDialogue();
+                            transitionToWorkbench();
+                            if (ecologyState.visitedTerraVault && ecologyState.currentStage === 0) {
+                                setTimeout(() => {
+                                    startWorkbenchChallenge();
+                                }, 500);
+                            }
+                        }},
+                        { text: "Not yet", action: closeDialogue }
+                    ]);
+                }
+            }
+        }
+
+        function handleBioBotMainInteraction() {
+            const { ecologyState } = gameState;
+
+            // Check if cooldown is active
+            if (checkCooldown()) {
+                return;
+            }
+
+            if (!ecologyState.introDone) {
+                startDialogue("Ratio", "Welcome to the Bio-Dome. Here we grow all sorts of modified plant species. The Bio-Bots take care of over 250 different species.", [
+                    { text: "Continue", action: () => {
+                        startDialogue("Bio-Bot", "GREETINGS, CADET. I ASSIST WITH GARDENING AND CARING FOR PLANT LIFE. I CANNOT HARM PLANTS.", [
+                            { text: "Continue", action: () => {
+                                startDialogue("Ratio", "The Bio-Bot here will help you with your first challenge: Growing a Holo-Bloom. But first, you need to learn about it.", [
+                                    { text: "Begin Challenge", action: () => {
+                                        ecologyState.introDone = true;
+                                        closeDialogue();
+                                        transitionToWorkbench();
+                                        // Auto-trigger workbench introduction after a short delay
+                                        setTimeout(() => {
+                                            startWorkbenchChallenge();
+                                        }, 500);
+                                    }}
+                                ]);
+                            }}
+                        ]);
+                    }}
+                ]);
+            } else if (ecologyState.levelComplete) {
+                startDialogue("Ratio", "You actually managed to germinate a Holo-Bloom. I suppose even a broken clock is right twice a day.", [
+                    { text: "Thank you... I think?", action: closeDialogue },
+                    { text: "Return to Bio-Dome Main", action: mainMenu }
+                ]);
+            } else {
+                startDialogue("Bio-Bot", "CONTINUE YOUR WORK AT THE GARDEN BENCH, CADET.");
+            }
+        }
+
+        function handleRatioNavigation() {
+            const { ecologyState } = gameState;
+
+            if (!ecologyState.introDone) {
+                startDialogue("Ratio", "First, you should talk to the Bio-Bot over there to begin your training.");
+            } else if (ecologyState.levelComplete) {
+                startDialogue("Ratio", "Congratulations on completing the challenge! Where would you like to go?", [
+                    { text: "Visit Workbench", action: () => {
+                        closeDialogue();
+                        transitionToWorkbench();
+                    }},
+                    { text: "Visit Terra-Vault", action: () => {
+                        closeDialogue();
+                        transitionToTerraVault();
+                    }},
+                    { text: "Stay here", action: closeDialogue }
+                ]);
+            } else {
+                startDialogue("Ratio", "Need help navigating? Where would you like to go?", [
+                    { text: "Go to Workbench", action: () => {
+                        closeDialogue();
+                        transitionToWorkbench();
+                        if (ecologyState.currentStage === 0) {
+                            setTimeout(() => {
+                                startWorkbenchChallenge();
+                            }, 500);
+                        }
+                    }},
+                    { text: "Go to Terra-Vault", action: () => {
+                        closeDialogue();
+                        transitionToTerraVault();
+                        setTimeout(() => {
+                            startDialogue("Ratio", "Here's the Terra-Vault. Walk up to the podium and press E to access the species database.");
+                        }, 500);
+                    }},
+                    { text: "Stay in Bio-Dome", action: closeDialogue }
+                ]);
+            }
+        }
+
+        function startWorkbenchChallenge() {
+            const { ecologyState } = gameState;
+
+            // Check if cooldown is active
+            if (checkCooldown()) {
+                return;
+            }
+
+            if (!ecologyState.visitedTerraVault) {
+                startDialogue("Ratio", "Before you attempt to prompt the Bio-Bot, visit the Terra-Vault to read up on germinating Holo-Blooms. Unless you want to make the poor thing cry.", [
+                    { text: "Visit Terra-Vault", action: () => {
+                        closeDialogue();
+                        transitionToTerraVault();
+                        setTimeout(() => {
+                            startDialogue("Ratio", "Here's the Terra-Vault. Walk up to the podium and press E to access the species database.");
+                        }, 500);
+                    }},
+                    { text: "I'll try anyway", action: () => {
+                        ecologyState.currentStage = 1;
+                        ecologyState.showPromptInterface = true;
+                        ecologyState.promptInterfaceAlpha = 0; // Start fade-in animation
+                        ecologyState.currentSelection = 'first'; // Reset to first blank
+                        closeDialogue();
+                    }}
+                ]);
+            } else {
+                ecologyState.currentStage = 1;
+                ecologyState.showPromptInterface = true;
+                ecologyState.promptInterfaceAlpha = 0; // Start fade-in animation
+                ecologyState.currentSelection = 'first'; // Reset to first blank
+                startDialogue("Ratio", "Alright, let's see if you paid attention. Fill in the blanks correctly.");
+            }
+        }
+
+        function transitionToWorkbench() {
+            gameState.gameMode = 'workbench';
+            gameState.player.x = 750;
+            gameState.player.y = 700;
+            gameState.ratio.x = 700;
+            gameState.ratio.y = 700;
+        }
+
+        function transitionToTerraVault() {
+            gameState.gameMode = 'terraVault';
+            gameState.player.x = 750;
+            gameState.player.y = 700;
+            gameState.ratio.x = 700;
+            gameState.ratio.y = 700;
+        }
+
+        function showSpeciesSelection() {
+            gameState.ecologyState.showSpeciesSelection = true;
+            gameState.ecologyState.speciesSelectionIndex = 0; // Start with first species
+        }
+
+        function showHoloBloomInfo() {
+            const { ecologyState } = gameState;
+            ecologyState.visitedTerraVault = true;
+            ecologyState.showSpeciesSelection = false;
+
+            startDialogue("Terra-Vault Database", "SPECIES: HOLO-BLOOM\nCLASS: TECHNO-ROSE\n\nThe Holo-Bloom has delicate petals. It is vulnerable to diseases and bugs. It needs SOIL to root in. It does NOT need water - only darkness to grow. Water will harm it.", [
+                { text: "Understood", action: () => {
+                    ecologyState.holoBloomInfoRead = true; // Mark as read to hide the hologram
+                    startDialogue("Ratio", "Did you get all that? The Holo-Bloom needs soil and darkness. No water. Remember that.", [
+                        { text: "Got it!", action: closeDialogue }
+                    ]);
+                }}
+            ]);
+        }
+
+        function submitPrompt() {
+            const { ecologyState } = gameState;
+            const { first, second } = ecologyState.selectedWords;
+
+            if (!first || !second) {
+                startDialogue("Ratio", "Fill in BOTH blanks before submitting, genius.");
+                return;
+            }
+
+            // Correct answer: soil first, water second
+            if (first === 'soil' && second === 'water') {
+                ecologyState.bioBotMood = 'happy';
+                ecologyState.levelComplete = true;
+                ecologyState.showPromptInterface = false;
+
+                startDialogue("Bio-Bot", "HOLO-BLOOM SUCCESSFULLY GERMINATED. THANK YOU, CADET.", [
+                    { text: "Continue", action: () => {
+                        startDialogue("Ratio", "Well, well. You actually did it. I'm... mildly impressed. You can now exit through the door when ready.", [
+                            { text: "Great!", action: () => {
+                                saveGame();
+                                closeDialogue();
+                            }}
+                        ]);
+                    }}
+                ]);
+            } else {
+                ecologyState.bioBotMood = 'sad';
+                ecologyState.mistakes++;
+
+                if (ecologyState.mistakes >= 2) {
+                    // Set 12-hour cooldown (in milliseconds)
+                    const twelveHours = 12 * 60 * 60 * 1000;
+                    ecologyState.cooldownUntil = Date.now() + twelveHours;
+
+                    startDialogue("Bio-Bot", "TOO MANY ERRORS. SYSTEM LOCKOUT INITIATED. 12 HOUR COOLDOWN ACTIVE.", [
+                        { text: "Oh no...", action: () => {
+                            startDialogue("Ratio", "Spectacular work, dunderhead! You've made the Bio-Bot cry AND triggered a lockout. Come back in 12 hours when you've had time to think about what you've done!", [
+                                { text: "I'm sorry...", action: () => {
+                                    ecologyState.mistakes = 0;
+                                    ecologyState.selectedWords = { first: null, second: null };
+                                    ecologyState.currentSelection = 'first';
+                                    ecologyState.showPromptInterface = false;
+                                    gameState.gameMode = 'bioDomeMain';
+                                    gameState.player.x = 750;
+                                    gameState.player.y = 850;
+                                    saveGame();
+                                    closeDialogue();
+                                }}
+                            ]);
+                        }}
+                    ]);
+                } else {
+                    startDialogue("Bio-Bot", "INCORRECT PROMPT. PLEASE BE CAREFUL. PLANTS ARE DELICATE.", [
+                        { text: "Try again", action: () => {
+                            startDialogue("Ratio", "You're making the Bio-Bot sad. Think about what you learned in the Terra-Vault!", [
+                                { text: "Go to Terra-Vault", action: () => {
+                                    ecologyState.selectedWords = { first: null, second: null };
+                                    ecologyState.currentSelection = 'first';
+                                    ecologyState.showPromptInterface = false;
+                                    gameState.gameMode = 'terraVault';
+                                    closeDialogue();
+                                }},
+                                { text: "Try again here", action: () => {
+                                    ecologyState.selectedWords = { first: null, second: null };
+                                    ecologyState.currentSelection = 'first';
+                                    closeDialogue();
+                                }}
+                            ]);
+                        }}
+                    ]);
+                }
+            }
+        }
+
+        function handleKeyDown(e) {
+            const { gameMode, activeDialogue, ecologyState } = gameState;
+            const key = e.key.toLowerCase();
+
+            if (activeDialogue.isActive) {
+                if (key === 'w' || key === 'arrowup') {
+                    activeDialogue.selectedOption = (activeDialogue.selectedOption - 1 + activeDialogue.options.length) % activeDialogue.options.length;
+                } else if (key === 's' || key === 'arrowdown') {
+                    activeDialogue.selectedOption = (activeDialogue.selectedOption + 1) % activeDialogue.options.length;
+                } else if (key === 'e' || key === 'enter') {
+                    if (activeDialogue.charIndex < activeDialogue.text.length) {
+                        activeDialogue.charIndex = activeDialogue.text.length;
+                    } else if (activeDialogue.options.length > 0) {
+                        activeDialogue.options[activeDialogue.selectedOption].action();
+                    } else {
+                        closeDialogue();
+                    }
+                }
+                return;
+            }
+
+            // Species selection controls
+            if (ecologyState.showSpeciesSelection && gameMode === 'terraVault') {
+                if (key === 'w' || key === 'arrowup') {
+                    ecologyState.speciesSelectionIndex = (ecologyState.speciesSelectionIndex - 1 + speciesDatabase.length) % speciesDatabase.length;
+                    return;
+                } else if (key === 's' || key === 'arrowdown') {
+                    ecologyState.speciesSelectionIndex = (ecologyState.speciesSelectionIndex + 1) % speciesDatabase.length;
+                    return;
+                } else if (key === 'e' || key === 'enter') {
+                    const selectedSpecies = speciesDatabase[ecologyState.speciesSelectionIndex];
+                    if (selectedSpecies.available) {
+                        showHoloBloomInfo();
+                    }
+                    return;
+                } else if (key === 'escape') {
+                    ecologyState.showSpeciesSelection = false;
+                    return;
+                }
+            }
+
+            // Prompt interface controls
+            if (ecologyState.showPromptInterface && gameMode === 'workbench') {
+                if (key === 'a' || key === 'arrowleft') {
+                    cycleWordSelection(-1);
+                    return;
+                } else if (key === 'd' || key === 'arrowright') {
+                    cycleWordSelection(1);
+                    return;
+                } else if (key === 'e' || key === 'enter') {
+                    if (ecologyState.currentSelection === 'submit') {
+                        submitPrompt();
+                    } else {
+                        selectCurrentWord();
+                    }
+                    return;
+                } else if (key === 'w' || key === 'arrowup') {
+                    // Navigate up: first ← second ← submit ← first (cycle)
+                    if (ecologyState.currentSelection === 'second') {
+                        ecologyState.currentSelection = 'first';
+                    } else if (ecologyState.currentSelection === 'submit') {
+                        ecologyState.currentSelection = 'second';
+                    } else { // 'first'
+                        ecologyState.currentSelection = 'submit';
+                    }
+                    return;
+                } else if (key === 's' || key === 'arrowdown') {
+                    // Navigate down: first → second → submit → first (cycle)
+                    if (ecologyState.currentSelection === 'first') {
+                        ecologyState.currentSelection = 'second';
+                    } else if (ecologyState.currentSelection === 'second') {
+                        ecologyState.currentSelection = 'submit';
+                    } else { // 'submit'
+                        ecologyState.currentSelection = 'first';
+                    }
+                    return;
+                }
+            }
+
+            if (gameState.keys.hasOwnProperty(key)) {
+                gameState.keys[key] = true;
+                gameState.player.moving = true;
+            }
+            if (key === 'e') handleInteraction();
+        }
+
+        const wordOptions = ['water', 'soil', 'light'];
+        let currentWordIndex = 0;
+
+        function cycleWordSelection(direction) {
+            currentWordIndex = (currentWordIndex + direction + wordOptions.length) % wordOptions.length;
+        }
+
+        function selectCurrentWord() {
+            const { ecologyState } = gameState;
+            const selectedWord = wordOptions[currentWordIndex];
+
+            if (ecologyState.currentSelection === 'first') {
+                ecologyState.selectedWords.first = selectedWord;
+                ecologyState.currentSelection = 'second';
+            } else if (ecologyState.currentSelection === 'second') {
+                ecologyState.selectedWords.second = selectedWord;
+                ecologyState.currentSelection = 'submit';
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (gameState.keys.hasOwnProperty(key)) gameState.keys[key] = false;
+            if (!gameState.keys.w && !gameState.keys.a && !gameState.keys.s && !gameState.keys.d) {
+                gameState.player.moving = false;
+            }
+        });
+
+        function checkCollision(rectA, rectB) {
+            const buffer = 5;
+            return rectA.x < rectB.x + rectB.width + buffer && rectA.x + rectA.width + buffer > rectB.x &&
+                   rectA.y < rectB.y + rectB.height + buffer && rectA.y + rectA.height + buffer > rectB.y;
+        }
+
+        function update(deltaTime) {
+            const { gameMode, player, ratio, keys, activeDialogue, ecologyState } = gameState;
+
+            handlePlayerAnimation(deltaTime);
+            updateBioBotAnimation(deltaTime);
+
+            // Animate prompt interface fade-in
+            if (ecologyState.showPromptInterface) {
+                if (ecologyState.promptInterfaceAlpha < 1) {
+                    ecologyState.promptInterfaceAlpha += 3 * deltaTime; // Fast fade-in
+                    if (ecologyState.promptInterfaceAlpha > 1) ecologyState.promptInterfaceAlpha = 1;
+                }
+            } else {
+                ecologyState.promptInterfaceAlpha = 0;
+            }
+
+            if (activeDialogue.isActive || ecologyState.showSpeciesSelection) {
+                if (activeDialogue.charIndex < activeDialogue.text.length) {
+                    activeDialogue.charIndex += 50 * deltaTime; // Typewriter effect - 50 chars per second
+                }
+                player.moving = false;
+                return;
+            }
+
+            let moved = false;
+            let newPlayerX = player.x;
+            let newPlayerY = player.y;
+
+            if (keys.w) { newPlayerY -= player.speed * deltaTime; player.frameY = 3; moved = true; }
+            if (keys.s) { newPlayerY += player.speed * deltaTime; player.frameY = 0; moved = true; }
+            if (keys.a) { newPlayerX -= player.speed * deltaTime; player.frameY = 2; ratio.direction = 'left'; moved = true; }
+            if (keys.d) { newPlayerX += player.speed * deltaTime; player.frameY = 1; ratio.direction = 'right'; moved = true; }
+
+            // Apply boundary collision for Terra Vault (block top area)
+            if (gameMode === 'terraVault') {
+                // Block top area of screen - moved down more
+                if (newPlayerY < 640) {
+                    newPlayerY = 640;
+                }
+            }
+
+            player.x = Math.max(0, Math.min(canvas.width - player.width, newPlayerX));
+            player.y = Math.max(0, Math.min(canvas.height - player.height, newPlayerY));
+
+            // Ratio follows player
+            const dx = player.x - ratio.x;
+            const dy = player.y - ratio.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > ratio.followDistance) {
+                ratio.x += (dx / distance) * ratio.speed * deltaTime;
+                ratio.y += (dy / distance) * ratio.speed * deltaTime;
+            }
+
+            // Check for nearby objects
+            gameState.nearbyObject = null;
+            let currentInteractables = [];
+            if (gameMode === 'bioDomeMain') currentInteractables = bioDomeInteractables;
+            else if (gameMode === 'workbench') currentInteractables = workbenchInteractables;
+            else if (gameMode === 'terraVault') currentInteractables = terraVaultInteractables;
+
+            for (const obj of currentInteractables) {
+                // Update Ratio's position dynamically for collision check
+                if (obj.id === 'ratio') {
+                    obj.x = ratio.x;
+                    obj.y = ratio.y;
+                }
+                if (checkCollision(player, obj)) {
+                    gameState.nearbyObject = obj;
+                    break;
+                }
+            }
+        }
+
+        let frameCounter = 0;
+        const playerAnimationFPS = 10;
+        function handlePlayerAnimation(deltaTime) {
+            if (gameState.player.moving) {
+                frameCounter += deltaTime;
+                if (frameCounter >= 1 / playerAnimationFPS) {
+                    frameCounter = 0;
+                    gameState.player.frameX = (gameState.player.frameX + 1) % 4;
+                }
+            } else {
+                gameState.player.frameX = 0;
+            }
+        }
+
+        function updateBioBotAnimation(deltaTime) {
+            const { ecologyState } = gameState;
+
+            // Only update bobbing motion - no frame animation to avoid "scrolling window" effect
+            // Entire static image moves up/down very gently
+            ecologyState.bioBotBobOffset = Math.sin(Date.now() / 5000) * 1; // Bobs up and down 1 pixel very gently
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const { gameMode } = gameState;
+
+            if (gameMode === 'bioDomeMain') {
+                drawBioDomeMain();
+            } else if (gameMode === 'workbench') {
+                drawWorkbench();
+            } else if (gameMode === 'terraVault') {
+                drawTerraVault();
+            }
+
+            drawHud();
+            if (gameState.activeDialogue.isActive) drawDialogueBox();
+        }
+
+        function drawBioDomeMain() {
+            if (bioDomeImage.complete) ctx.drawImage(bioDomeImage, 0, 0, canvas.width, canvas.height);
+
+            // Draw Bio-Bot - use static idle standing image with subtle bobbing
+            const bioBotObj = bioDomeInteractables.find(obj => obj.id === 'biobot');
+            const { ecologyState } = gameState;
+
+            // Better aspect ratio - taller to avoid squishing
+            const bioBotWidth = 100;
+            const bioBotHeight = 130;
+
+            if (ecologyState.bioBotMood === 'sad') {
+                // Sad bot - static image
+                if (bioBotSadImage.complete) {
+                    ctx.drawImage(bioBotSadImage, bioBotObj.x, bioBotObj.y + ecologyState.bioBotBobOffset, bioBotWidth, bioBotHeight);
+                }
+            } else {
+                // Happy bot - use static idle standing image on main screen
+                if (bioBotIdleStandingImage.complete) {
+                    ctx.drawImage(bioBotIdleStandingImage,
+                        bioBotObj.x, bioBotObj.y + ecologyState.bioBotBobOffset,
+                        bioBotWidth, bioBotHeight);
+                }
+            }
+
+            drawPlayerAndRatio();
+        }
+
+        function drawWorkbench() {
+            if (workbenchImage.complete) ctx.drawImage(workbenchImage, 0, 0, canvas.width, canvas.height);
+
+            // Don't draw player and ratio - workbench is focused on Bio-Bot interaction only
+
+            // Draw Bio-Bot in workbench - positioned lower and more to the left
+            const { ecologyState } = gameState;
+            const bioBotWidth = 220; // Bigger
+            const bioBotHeight = 280; // Taller to fix aspect ratio
+            const bioBotX = 340; // Moved 15% more to the left
+            const bioBotY = 700; // Moved down further
+
+            // Add emotional glow effect
+            if (ecologyState.bioBotMood === 'sad') {
+                ctx.shadowColor = '#FF6B6B';
+                ctx.shadowBlur = 25;
+            } else {
+                ctx.shadowColor = '#4CAF50';
+                ctx.shadowBlur = 20;
+            }
+
+            // Calculate final Y position with subtle bobbing applied to entire image
+            const finalY = bioBotY + ecologyState.bioBotBobOffset;
+
+            if (ecologyState.bioBotMood === 'sad') {
+                // Sad bot - static image
+                if (bioBotSadImage.complete) {
+                    ctx.drawImage(bioBotSadImage, bioBotX, finalY, bioBotWidth, bioBotHeight);
+                }
+            } else {
+                // Happy bot - use blinking animation on workbench (like Gary's animation)
+                if (bioBotIdleAnimationImage.complete) {
+                    // Each frame is 408x612, stacked vertically (like Gary's idle animation)
+                    const singleFrameWidth = 408;
+                    const singleFrameHeight = 612;
+                    const totalFrames = Math.floor(bioBotIdleAnimationImage.height / singleFrameHeight);
+
+                    // Calculate which frame to show based on time (very slow blinking)
+                    const currentFrameIndex = Math.floor((Date.now() / 1500) % totalFrames);
+
+                    // Draw the selected frame (vertical strip)
+                    ctx.drawImage(bioBotIdleAnimationImage,
+                        0, currentFrameIndex * singleFrameHeight, // Source: select vertical frame
+                        singleFrameWidth, singleFrameHeight, // Source: exact frame dimensions
+                        bioBotX, finalY, // Destination
+                        bioBotWidth, bioBotHeight); // Destination size
+                }
+            }
+            ctx.shadowBlur = 0;
+
+            // Draw mistake counter if mistakes have been made
+            if (gameState.ecologyState.mistakes > 0 && !gameState.ecologyState.levelComplete) {
+                const mistakeBoxX = canvas.width - 270;
+                const mistakeBoxY = 120;
+
+                ctx.fillStyle = 'rgba(40, 20, 20, 0.9)';
+                ctx.fillRect(mistakeBoxX, mistakeBoxY, 250, 70);
+                ctx.strokeStyle = '#FF6B6B';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(mistakeBoxX, mistakeBoxY, 250, 70);
+
+                ctx.fillStyle = '#FF6B6B';
+                ctx.font = 'bold 18px "Roboto Mono"';
+                ctx.textAlign = 'left';
+                ctx.fillText('⚠ MISTAKES', mistakeBoxX + 15, mistakeBoxY + 28);
+
+                // Draw mistake dots (only 2 now)
+                for (let i = 0; i < 2; i++) {
+                    ctx.fillStyle = i < gameState.ecologyState.mistakes ? '#FF4444' : '#444';
+                    ctx.beginPath();
+                    ctx.arc(mistakeBoxX + 50 + i * 60, mistakeBoxY + 50, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.fillStyle = '#FFF';
+                ctx.font = '14px "Roboto Mono"';
+                ctx.fillText(`${gameState.ecologyState.mistakes}/2`, mistakeBoxX + 180, mistakeBoxY + 55);
+            }
+
+            if (gameState.ecologyState.showPromptInterface) {
+                drawPromptInterface();
+            }
+        }
+
+        function drawTerraVault() {
+            if (terraVaultImage.complete) ctx.drawImage(terraVaultImage, 0, 0, canvas.width, canvas.height);
+
+            // Draw floating info hologram at the podium if visited but NOT yet read
+            if (gameState.ecologyState.visitedTerraVault && !gameState.ecologyState.holoBloomInfoRead && holoBloomInfoImage.complete && !gameState.ecologyState.showSpeciesSelection) {
+                const time = Date.now() / 1000;
+                const floatOffset = Math.sin(time * 2) * 5;
+                const centerX = canvas.width / 2;
+                const centerY = 550 + floatOffset; // Moved up a bit
+                const imgWidth = 140; // 65% smaller (400 * 0.35 = 140)
+                const imgHeight = 105; // 65% smaller (300 * 0.35 = 105)
+
+                // Add glow effect
+                ctx.shadowColor = '#00FFFF';
+                ctx.shadowBlur = 20;
+                ctx.globalAlpha = 0.9;
+                ctx.drawImage(holoBloomInfoImage, centerX - imgWidth / 2, centerY - imgHeight / 2, imgWidth, imgHeight);
+                ctx.globalAlpha = 1.0;
+                ctx.shadowBlur = 0;
+            }
+
+            drawPlayerAndRatio();
+
+            if (gameState.ecologyState.showSpeciesSelection) {
+                drawSpeciesSelection();
+            }
+        }
+
+        function drawPlayerAndRatio() {
+            const { player, ratio } = gameState;
+
+            const ratioImg = ratio.direction === 'left' ? ratioImageL : ratioImageR;
+            if (ratioImg.complete) ctx.drawImage(ratioImg, ratio.x, ratio.y, ratio.width, ratio.height);
+
+            if (playerImage.complete) {
+                ctx.drawImage(playerImage, player.frameX * player.spriteWidth, player.frameY * player.spriteHeight,
+                    player.spriteWidth, player.spriteHeight, player.x, player.y, player.width, player.height);
+            }
+        }
+
+        function drawSpeciesSelection() {
+            const { ecologyState } = gameState;
+
+            // Semi-transparent overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Main panel
+            const panelX = 200;
+            const panelY = 100;
+            const panelWidth = 1100;
+            const panelHeight = 700;
+
+            const gradient = ctx.createLinearGradient(panelX, panelY, panelX, panelY + panelHeight);
+            gradient.addColorStop(0, 'rgba(30, 50, 70, 0.95)');
+            gradient.addColorStop(1, 'rgba(20, 30, 50, 0.95)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(panelX, panelY, panelWidth, panelHeight);
+
+            ctx.strokeStyle = '#00FFFF';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#00FFFF';
+            ctx.shadowBlur = 15;
+            ctx.strokeRect(panelX, panelY, panelWidth, panelHeight);
+            ctx.shadowBlur = 0;
+
+            // Title
+            ctx.fillStyle = '#00FFFF';
+            ctx.font = 'bold 32px "Roboto Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText('TERRA-VAULT SPECIES DATABASE', canvas.width / 2, panelY + 50);
+
+            // Draw species grid
+            const itemsPerRow = 2;
+            const itemWidth = 450;
+            const itemHeight = 140;
+            const itemSpacing = 50;
+            const startX = panelX + 80;
+            const startY = panelY + 120;
+
+            speciesDatabase.forEach((species, index) => {
+                const row = Math.floor(index / itemsPerRow);
+                const col = index % itemsPerRow;
+                const x = startX + col * (itemWidth + itemSpacing);
+                const y = startY + row * (itemHeight + itemSpacing);
+
+                const isSelected = index === ecologyState.speciesSelectionIndex;
+
+                // Item background
+                if (isSelected) {
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+                    ctx.fillRect(x - 10, y - 10, itemWidth + 20, itemHeight + 20);
+                    ctx.strokeStyle = '#FFD700';
+                    ctx.lineWidth = 4;
+                    ctx.shadowColor = '#FFD700';
+                    ctx.shadowBlur = 15;
+                    ctx.strokeRect(x - 10, y - 10, itemWidth + 20, itemHeight + 20);
+                    ctx.shadowBlur = 0;
+                }
+
+                if (species.available) {
+                    ctx.fillStyle = 'rgba(0, 150, 150, 0.3)';
+                } else {
+                    ctx.fillStyle = 'rgba(50, 50, 50, 0.5)';
+                }
+                ctx.fillRect(x, y, itemWidth, itemHeight);
+                ctx.strokeStyle = species.available ? '#00AAAA' : '#555';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, itemWidth, itemHeight);
+
+                // Species name
+                ctx.font = 'bold 24px "Roboto Mono"';
+                ctx.textAlign = 'left';
+                ctx.fillStyle = species.available ? '#00FFFF' : '#666';
+                ctx.fillText(species.name, x + 20, y + 40);
+
+                // Class
+                ctx.font = '18px "Roboto Mono"';
+                ctx.fillStyle = species.available ? '#87CEEB' : '#555';
+                ctx.fillText(`Class: ${species.class}`, x + 20, y + 75);
+
+                // Lock indicator
+                if (!species.available) {
+                    ctx.font = 'bold 40px "Roboto Mono"';
+                    ctx.fillStyle = '#888';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🔒', x + itemWidth - 50, y + 80);
+                }
+
+                // Status
+                ctx.font = '16px "Roboto Mono"';
+                ctx.textAlign = 'left';
+                if (species.available) {
+                    ctx.fillStyle = '#4CAF50';
+                    ctx.fillText('[ AVAILABLE ]', x + 20, y + 110);
+                } else {
+                    ctx.fillStyle = '#FF6B6B';
+                    ctx.fillText('[ LOCKED ]', x + 20, y + 110);
+                }
+            });
+
+            // Instructions
+            const instrY = panelY + panelHeight - 50;
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 20px "Roboto Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText('Use W/S to navigate | Press E to select | ESC to close', canvas.width / 2, instrY);
+        }
+
+        function drawPromptInterface() {
+            const { ecologyState } = gameState;
+            const alpha = ecologyState.promptInterfaceAlpha;
+
+            // Apply alpha to all interface elements (no dark background overlay)
+            ctx.globalAlpha = alpha;
+
+            // Draw prompt box with gradient - adjusted size
+            const boxX = 795;
+            const boxY = 200; // Position
+            const boxWidth = 560; // 20% narrower
+            const boxHeight = 350; // Even shorter
+
+            const gradient = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxHeight);
+            gradient.addColorStop(0, 'rgba(230, 240, 255, 0.98)');
+            gradient.addColorStop(1, 'rgba(200, 220, 240, 0.98)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+            ctx.strokeStyle = '#2C5F8D';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+            // Draw title bar
+            ctx.fillStyle = '#2C5F8D';
+            ctx.fillRect(boxX, boxY, boxWidth, 40);
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 18px "Roboto Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText('BIO-BOT INSTRUCTION PANEL', boxX + boxWidth / 2, boxY + 28);
+
+            // Draw prompt text
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 21px "Roboto Mono"';
+            ctx.textAlign = 'left';
+
+            const promptY = boxY + 90;
+            ctx.fillText(`Pour `, boxX + 40, promptY);
+
+            // First blank with text
+            const blank1X = boxX + 160;
+            const blankWidth = 150;
+            const blankHeight = 45;
+
+            // Draw highlight if selected
+            if (ecologyState.currentSelection === 'first') {
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                ctx.fillRect(blank1X - 10, promptY - 35, blankWidth + 20, blankHeight + 10);
+            }
+
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(blank1X, promptY - 30, blankWidth, blankHeight);
+            ctx.strokeStyle = '#2C5F8D';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(blank1X, promptY - 30, blankWidth, blankHeight);
+
+            // Draw word in blank
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 19px "Roboto Mono"';
+            ctx.textAlign = 'center';
+            if (ecologyState.selectedWords.first) {
+                ctx.fillText(ecologyState.selectedWords.first.toUpperCase(), blank1X + blankWidth / 2, promptY);
+            } else if (ecologyState.currentSelection === 'first') {
+                ctx.fillStyle = '#666';
+                const currentWord = wordOptions[currentWordIndex];
+                ctx.fillText(currentWord.toUpperCase(), blank1X + blankWidth / 2, promptY);
+            } else {
+                ctx.fillStyle = '#BBB';
+                ctx.fillText('_____', blank1X + blankWidth / 2, promptY);
+            }
+
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 21px "Roboto Mono"';
+            ctx.textAlign = 'left';
+            ctx.fillText(` into the pot.`, blank1X + blankWidth + 15, promptY);
+
+            // Second line
+            const line2Y = promptY + 60;
+            ctx.fillText(`Place the seed into the pot.`, boxX + 40, line2Y);
+
+            // Third line
+            const line3Y = line2Y + 60;
+            ctx.fillText(`Do not pour `, boxX + 40, line3Y);
+
+            // Second blank with text
+            const blank2X = boxX + 310;
+
+            // Draw highlight if selected
+            if (ecologyState.currentSelection === 'second') {
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                ctx.fillRect(blank2X - 10, line3Y - 35, blankWidth + 20, blankHeight + 10);
+            }
+
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(blank2X, line3Y - 30, blankWidth, blankHeight);
+            ctx.strokeStyle = '#2C5F8D';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(blank2X, line3Y - 30, blankWidth, blankHeight);
+
+            // Draw word in blank
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 19px "Roboto Mono"';
+            ctx.textAlign = 'center';
+            if (ecologyState.selectedWords.second) {
+                ctx.fillText(ecologyState.selectedWords.second.toUpperCase(), blank2X + blankWidth / 2, line3Y);
+            } else if (ecologyState.currentSelection === 'second') {
+                ctx.fillStyle = '#666';
+                const currentWord = wordOptions[currentWordIndex];
+                ctx.fillText(currentWord.toUpperCase(), blank2X + blankWidth / 2, line3Y);
+            } else {
+                ctx.fillStyle = '#BBB';
+                ctx.fillText('_____', blank2X + blankWidth / 2, line3Y);
+            }
+
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 21px "Roboto Mono"';
+            ctx.textAlign = 'left';
+            ctx.fillText(`.`, blank2X + blankWidth + 15, line3Y);
+
+            // Submit button with better styling
+            const submitY = boxY + boxHeight - 70;
+            const submitX = boxX + boxWidth / 2 - 100;
+            const submitWidth = 200;
+            const submitHeight = 50;
+
+            if (ecologyState.currentSelection === 'submit') {
+                ctx.fillStyle = '#00CC00';
+                ctx.shadowColor = '#00FF00';
+                ctx.shadowBlur = 20;
+            } else {
+                ctx.fillStyle = '#4CAF50';
+            }
+            ctx.fillRect(submitX, submitY, submitWidth, submitHeight);
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#2E7D32';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(submitX, submitY, submitWidth, submitHeight);
+
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 15px "Roboto Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText('SUBMIT', submitX + submitWidth / 2, submitY + 32);
+
+            // Instructions with better styling - smaller and positioned below box
+            const instrY = boxY + boxHeight + 20;
+            const instrBoxWidth = 560;
+            ctx.fillStyle = 'rgba(44, 95, 141, 0.95)';
+            ctx.fillRect(boxX + boxWidth / 2 - instrBoxWidth / 2, instrY, instrBoxWidth, 45);
+            ctx.strokeStyle = '#FFF';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(boxX + boxWidth / 2 - instrBoxWidth / 2, instrY, instrBoxWidth, 45);
+
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 13px "Roboto Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText('Use A/D to cycle words | W/S to change field | E to select/submit', boxX + boxWidth / 2, instrY + 28);
+
+            // Reset global alpha
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawHud() {
+            if (!gameState.activeDialogue.isActive) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+                ctx.textAlign = 'center';
+                ctx.font = '22px "Roboto Mono"';
+                ctx.fillStyle = '#FFFFFF';
+
+                if (gameState.nearbyObject) {
+                    const textPart1 = "Press ";
+                    const textPart2 = "[E]";
+                    const textPart3 = ` to interact with ${gameState.nearbyObject.name}`;
+
+                    const originalTextAlign = ctx.textAlign;
+                    ctx.textAlign = 'left';
+
+                    const text1Width = ctx.measureText(textPart1).width;
+                    const text2Width = ctx.measureText(textPart2).width;
+                    const text3Width = ctx.measureText(textPart3).width;
+                    const totalWidth = text1Width + text2Width + text3Width;
+                    let currentX = (canvas.width / 2) - (totalWidth / 2);
+
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillText(textPart1, currentX, canvas.height - 30);
+                    currentX += text1Width;
+
+                    ctx.fillStyle = '#FFFF00';
+                    ctx.fillText(textPart2, currentX, canvas.height - 30);
+                    currentX += text2Width;
+
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillText(textPart3, currentX, canvas.height - 30);
+
+                    ctx.textAlign = originalTextAlign;
+                } else if (gameState.gameMode === 'workbench' && !gameState.ecologyState.showPromptInterface) {
+                    ctx.fillText("Use WASD to move", canvas.width / 2, canvas.height - 30);
+                }
+            }
+
+            // Removed celebration effect - will be replaced with germination sprite
+
+            // Navigation help panel
+            const navWidth = 300;
+            const navHeight = 160;
+            const navX = canvas.width - navWidth - 20;
+            const navY = 20;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(navX, navY, navWidth, navHeight);
+            ctx.strokeStyle = '#00FFFF';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(navX, navY, navWidth, navHeight);
+
+            ctx.fillStyle = '#00FFFF';
+            ctx.font = 'bold 18px "Roboto Mono"';
+            ctx.textAlign = 'left';
+            ctx.fillText("NAVIGATION", navX + 10, navY + 25);
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '16px "Roboto Mono"';
+            const navLineY = navY + 50;
+
+            if (gameState.gameMode === 'bioDomeMain') {
+                ctx.fillText("Current: Bio-Dome Main", navX + 10, navLineY);
+                ctx.fillStyle = '#FFFF00';
+                ctx.fillText("• Talk to Ratio for help", navX + 10, navLineY + 25);
+                ctx.fillText("• Talk to Bio-Bot to start", navX + 10, navLineY + 50);
+            } else if (gameState.gameMode === 'workbench') {
+                ctx.fillText("Current: Workbench", navX + 10, navLineY);
+                ctx.fillStyle = '#FFFF00';
+                ctx.fillText("• Complete the challenge", navX + 10, navLineY + 25);
+                ctx.fillText("• Visit Terra-Vault (left)", navX + 10, navLineY + 50);
+            } else if (gameState.gameMode === 'terraVault') {
+                ctx.fillText("Current: Terra-Vault", navX + 10, navLineY);
+                ctx.fillStyle = '#FFFF00';
+                ctx.fillText("• Read Holo-Bloom info", navX + 10, navLineY + 25);
+                ctx.fillText("• Exit at bottom to return", navX + 10, navLineY + 50);
+            }
+
+            ctx.fillStyle = '#888';
+            ctx.font = '14px "Roboto Mono"';
+            ctx.fillText("Press E near Ratio to navigate", navX + 10, navY + navHeight - 10);
+        }
+
+        function drawDialogueBox() {
+            const { activeDialogue } = gameState;
+            activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
+
+            const boxHeight = 200;
+
+            // Draw box with gradient - no border
+            const boxGradient = ctx.createLinearGradient(0, canvas.height - boxHeight - 20, 0, canvas.height);
+            boxGradient.addColorStop(0, 'rgba(20, 30, 50, 0.95)');
+            boxGradient.addColorStop(1, 'rgba(10, 20, 40, 0.95)');
+            ctx.fillStyle = boxGradient;
+            ctx.fillRect(20, canvas.height - boxHeight - 20, canvas.width - 40, boxHeight);
+
+            // Draw speaker name - no background highlight
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 20px "Roboto Mono"';
+            ctx.textAlign = 'left';
+            ctx.fillText(activeDialogue.speaker, 145, canvas.height - boxHeight + 12);
+
+            // Draw character portrait - no border
+            if (activeDialogue.speaker === "Ratio" && ratioImageR.complete) {
+                ctx.drawImage(ratioImageR, 40, canvas.height - boxHeight, 70, 70);
+            } else if (activeDialogue.speaker === "Bio-Bot" && bioBotHeadImage.complete) {
+                // Use Bio-Bot head when talking
+                ctx.drawImage(bioBotHeadImage, 40, canvas.height - boxHeight, 70, 70);
+            }
+
+            ctx.font = 'bold 22px "Roboto Mono"';
+            ctx.fillStyle = '#E0FFFF';
+            ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+            ctx.shadowBlur = 4;
+
+            const lines = wrapText(activeDialogue.displayText, 90);
+            lines.forEach((line, index) => {
+                ctx.fillText(line, 145, canvas.height - boxHeight + 45 + (index * 30));
+            });
+
+            if (activeDialogue.charIndex >= activeDialogue.text.length) {
+                if(activeDialogue.options.length > 0) {
+                    activeDialogue.options.forEach((option, index) => {
+                        ctx.fillStyle = index === activeDialogue.selectedOption ? '#FFD700' : '#87CEEB';
+                        if (index === activeDialogue.selectedOption) {
+                            ctx.shadowColor = '#FFD700';
+                            ctx.shadowBlur = 8;
+                        }
+                        ctx.fillText(`${index === activeDialogue.selectedOption ? '▶ ' : '  '}${option.text}`, 50, canvas.height - boxHeight + 135 + (index * 30));
+                        ctx.shadowBlur = 4;
+                    });
+                } else {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.shadowColor = '#FFD700';
+                    ctx.shadowBlur = 8;
+                    ctx.fillText("Press [E] to continue...", canvas.width - 450, canvas.height - 40);
+                }
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        function wrapText(text, maxWidthChars) {
+            const words = text.split(' ');
+            let lines = [];
+            let currentLine = words[0] || '';
+            for (let i = 1; i < words.length; i++) {
+                if ((currentLine + ' ' + words[i]).length > maxWidthChars) {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                } else {
+                    currentLine += ' ' + words[i];
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        let lastTime = 0;
+        function gameLoop(time) {
+            if (lastTime > 0) {
+                const deltaTime = (time - lastTime) / 1000;
+                update(deltaTime);
+            }
+            lastTime = time;
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function init() {
+            loadGame();
+
+            document.getElementById('save-button').addEventListener('click', saveGame);
+            document.getElementById('load-button').addEventListener('click', () => location.reload());
+            document.getElementById('main-menu-button').addEventListener('click', mainMenu);
+
+            setInterval(saveGame, 180000);
+
+            // Start intro dialogue
+            if (!gameState.ecologyState.introDone) {
+                setTimeout(() => {
+                    startDialogue("Ratio", "Welcome to the Bio-Dome, Cadet. This is where we study the ecology of modified plant species. Go talk to the Bio-Bot over there.", [
+                        { text: "Understood", action: closeDialogue }
+                    ]);
+                }, 500);
+            }
+
+            const assetsToLoad = [
+                bioDomeImage, workbenchImage, terraVaultImage, playerImage, ratioImageL, ratioImageR,
+                bioBotIdleStandingImage, bioBotIdleAnimationImage, bioBotHeadImage, bioBotSadImage, holoBloomInfoImage
+            ];
+            let loadedCount = 0;
+            const totalAssets = assetsToLoad.length;
+
+            const checkAllLoaded = () => {
+                loadedCount++;
+                if (loadedCount === totalAssets) {
+                    requestAnimationFrame(gameLoop);
+                }
+            };
+
+            assetsToLoad.forEach(asset => {
+                asset.onload = checkAllLoaded;
+                asset.onerror = () => {
+                    console.error(`Failed to load image: ${asset.src}`);
+                    checkAllLoaded();
+                };
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>

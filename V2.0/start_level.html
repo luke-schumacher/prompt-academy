@@ -180,12 +180,27 @@
                 inventory: { cog: false, loom: false, chip: false },
                 garyFixed: false,
                 garyDialogueStep: 0,
-                garyAnimationState: 'off', 
+                garyAnimationState: 'off',
                 garyAnimationFrame: 0,
                 garyAnimationTimer: 0,
                 levelComplete: false,
                 completeMessageTimer: 0,
                 dialogueHistory: [],
+            },
+            resonanceState: {
+                isActive: false,
+                currentPiece: null, // 'cog', 'loom', or 'chip'
+                pattern: [],
+                patternDisplay: [], // Visual representation
+                currentIndex: 0,
+                pulseTimer: 0,
+                pulseDuration: 1.0, // seconds between beats
+                successCount: 0,
+                requiredSuccess: 0,
+                feedbackTimer: 0, // for showing correct/wrong feedback
+                lastCorrect: null, // true/false/null
+                syncProgress: 0, // 0 to 1
+                particles: []
             },
             startScreenState: {
                 finn: { x: 350, y: 750, targetX: 350, targetY: 750, pauseTimer: 99999, speed: 6, moving: false, frameY: 0 },
@@ -293,6 +308,34 @@
         const garyPersona = {
             systemPrompt: `You are GARY, the groundskeeper of the Prompt Academy. You were recently restored by a student. You are helpful and knowledgeable about the academy grounds. You are grateful to the student for restoring you. Keep your responses to 1-2 short, helpful sentences.`
         };
+
+        // Resonance patterns for each component
+        const resonancePatterns = {
+            cog: {
+                pattern: ['w', 'w', 's', 's', 'w', 'w'], // Slow, deliberate thinking pattern
+                display: ['↑', '↑', '↓', '↓', '↑', '↑'],
+                pulseDuration: 0.8, // Slower, thoughtful rhythm
+                color: '#FFD700', // Gold
+                name: 'Cognitive Cog',
+                description: 'Match the rhythm of thought...'
+            },
+            loom: {
+                pattern: ['w', 'a', 's', 'd', 'w', 'a', 's', 'd'], // Logical sequence
+                display: ['↑', '←', '↓', '→', '↑', '←', '↓', '→'],
+                pulseDuration: 0.6, // Precise, methodical rhythm
+                color: '#00BFFF', // Blue
+                name: 'Logic Loom',
+                description: 'Follow the logical sequence...'
+            },
+            chip: {
+                pattern: ['w', 'd', 's', 'a', 'w', 'd', 's', 'a'], // Flowing circular pattern
+                display: ['↑', '→', '↓', '←', '↑', '→', '↓', '←'],
+                pulseDuration: 0.7, // Flowing, organic rhythm
+                color: '#FF69B4', // Pink
+                name: 'Empathy Chip',
+                description: 'Feel the emotional resonance...'
+            }
+        };
         
         function saveGame() {
             try {
@@ -347,6 +390,45 @@
 
         function closeDialogue() {
             gameState.activeDialogue.isActive = false;
+        }
+
+        function startResonanceTuning(pieceType) {
+            const pattern = resonancePatterns[pieceType];
+            if (!pattern) return;
+
+            const { resonanceState } = gameState;
+            resonanceState.isActive = true;
+            resonanceState.currentPiece = pieceType;
+            resonanceState.pattern = pattern.pattern;
+            resonanceState.patternDisplay = pattern.display;
+            resonanceState.pulseDuration = pattern.pulseDuration;
+            resonanceState.currentIndex = 0;
+            resonanceState.pulseTimer = 0;
+            resonanceState.successCount = 0;
+            resonanceState.requiredSuccess = pattern.pattern.length;
+            resonanceState.feedbackTimer = 0;
+            resonanceState.lastCorrect = null;
+            resonanceState.syncProgress = 0;
+            resonanceState.particles = [];
+        }
+
+        function endResonanceTuning(success) {
+            const { resonanceState, level1State } = gameState;
+
+            if (success) {
+                // Collect the piece
+                level1State.inventory[resonanceState.currentPiece] = true;
+                getRatioDialogue(`The player successfully attuned to the ${resonancePatterns[resonanceState.currentPiece].name}. Congratulate them and remind them how many parts are left to find.`);
+            }
+
+            // Reset resonance state
+            resonanceState.isActive = false;
+            resonanceState.currentPiece = null;
+            resonanceState.pattern = [];
+            resonanceState.patternDisplay = [];
+            resonanceState.currentIndex = 0;
+            resonanceState.syncProgress = 0;
+            resonanceState.particles = [];
         }
 
         async function getRatioDialogue(prompt, callback = null) {
@@ -471,8 +553,8 @@
             } else if (gameState.gameMode === 'level1') {
                  if (id === 'cog' || id === 'loom' || id === 'chip') {
                     if (!gameState.level1State.inventory[id]) {
-                        gameState.level1State.inventory[id] = true;
-                        getRatioDialogue(`The user just found the ${nearbyObject.name}. Congratulate them and remind them how many parts are left to find.`);
+                        // Start resonance tuning mini-game
+                        startResonanceTuning(id);
                     }
                 } else if (id === 'broken_gary') {
                     if (gameState.level1State.garyFixed) {
@@ -563,11 +645,50 @@
         }
         
         function handleKeyDown(e) {
-            const { gameMode, activeDialogue } = gameState;
+            const { gameMode, activeDialogue, resonanceState } = gameState;
             const key = e.key.toLowerCase();
 
             if (gameMode === 'startScreen' || gameMode.startsWith('transition')) return;
-            
+
+            // Handle resonance tuning input
+            if (resonanceState.isActive) {
+                if (key === 'escape') {
+                    endResonanceTuning(false);
+                    return;
+                }
+
+                // Check if key matches current pattern position
+                const expectedKey = resonanceState.pattern[resonanceState.currentIndex];
+
+                if (key === expectedKey) {
+                    // Correct key!
+                    resonanceState.lastCorrect = true;
+                    resonanceState.feedbackTimer = 0.3;
+                    resonanceState.currentIndex++;
+                    resonanceState.successCount++;
+                    resonanceState.syncProgress = resonanceState.successCount / resonanceState.requiredSuccess;
+
+                    // Create success particle
+                    createResonanceParticle(true);
+
+                    // Check if pattern is complete
+                    if (resonanceState.successCount >= resonanceState.requiredSuccess) {
+                        setTimeout(() => endResonanceTuning(true), 500);
+                    }
+                } else if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
+                    // Wrong key!
+                    resonanceState.lastCorrect = false;
+                    resonanceState.feedbackTimer = 0.3;
+                    resonanceState.currentIndex = 0; // Reset pattern on mistake
+                    resonanceState.successCount = 0;
+                    resonanceState.syncProgress = 0;
+
+                    // Create fail particle
+                    createResonanceParticle(false);
+                }
+                return;
+            }
+
             if (activeDialogue.isActive) {
                 if (key === 'w' || key === 'arrowup') {
                     activeDialogue.selectedOption = (activeDialogue.selectedOption - 1 + activeDialogue.options.length) % activeDialogue.options.length;
@@ -590,6 +711,25 @@
                 gameState.player.moving = true;
             }
             if (key === 'e') handleInteraction();
+        }
+
+        function createResonanceParticle(success) {
+            const { resonanceState } = gameState;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            for (let i = 0; i < 5; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 50 + Math.random() * 50;
+                resonanceState.particles.push({
+                    x: centerX,
+                    y: centerY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 1.0,
+                    color: success ? resonancePatterns[resonanceState.currentPiece].color : '#FF0000'
+                });
+            }
         }
         
         window.addEventListener('keydown', handleKeyDown);
@@ -653,6 +793,33 @@
                         }}
                     ]);
                     return; // Pause game update until dialogue is closed
+                }
+
+                // Update resonance tuning
+                if (gameState.resonanceState.isActive) {
+                    const { resonanceState } = gameState;
+
+                    // Update pulse timer
+                    resonanceState.pulseTimer += deltaTime;
+                    if (resonanceState.pulseTimer >= resonanceState.pulseDuration) {
+                        resonanceState.pulseTimer = 0;
+                    }
+
+                    // Update feedback timer
+                    if (resonanceState.feedbackTimer > 0) {
+                        resonanceState.feedbackTimer -= deltaTime;
+                    }
+
+                    // Update particles
+                    resonanceState.particles = resonanceState.particles.filter(p => {
+                        p.x += p.vx * deltaTime;
+                        p.y += p.vy * deltaTime;
+                        p.life -= deltaTime * 2;
+                        return p.life > 0;
+                    });
+
+                    gameState.player.moving = false;
+                    return; // Don't process movement during resonance tuning
                 }
 
                 if (gameState.activeDialogue.isActive) {
@@ -971,6 +1138,7 @@
                 ctx.textAlign = 'center';
                 ctx.fillText("Level 1 Completed!", canvas.width / 2, 125);
             }
+            if (gameState.resonanceState.isActive) drawResonanceTuning();
             if (gameState.activeDialogue.isActive) drawDialogueBox();
         }
 
@@ -1008,6 +1176,133 @@
                     }
                     break;
             }
+        }
+
+        function drawResonanceTuning() {
+            const { resonanceState } = gameState;
+            if (!resonanceState.currentPiece) return;
+
+            const pattern = resonancePatterns[resonanceState.currentPiece];
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Draw dark overlay
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw component image in center with glow
+            const componentImages = { cog: cogImage, loom: loomImage, chip: chipImage };
+            const componentImg = componentImages[resonanceState.currentPiece];
+
+            if (componentImg && componentImg.complete) {
+                const imgSize = 120;
+                const pulse = Math.sin(resonanceState.pulseTimer / resonanceState.pulseDuration * Math.PI * 2) * 0.5 + 0.5;
+
+                // Glow effect
+                ctx.shadowColor = pattern.color;
+                ctx.shadowBlur = 30 + pulse * 20;
+                ctx.globalAlpha = 0.8 + pulse * 0.2;
+                ctx.drawImage(componentImg, centerX - imgSize/2, centerY - imgSize/2, imgSize, imgSize);
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+            }
+
+            // Draw title
+            ctx.font = 'bold 36px "Roboto Mono"';
+            ctx.fillStyle = pattern.color;
+            ctx.textAlign = 'center';
+            ctx.fillText(pattern.name, centerX, 100);
+
+            // Draw description
+            ctx.font = '20px "Roboto Mono"';
+            ctx.fillStyle = '#AAAAAA';
+            ctx.fillText(pattern.description, centerX, 140);
+
+            // Draw pattern sequence
+            const patternY = centerY + 150;
+            const spacing = 70;
+            const startX = centerX - (pattern.display.length * spacing) / 2 + spacing / 2;
+
+            pattern.display.forEach((arrow, index) => {
+                const x = startX + index * spacing;
+                const isCurrentStep = index === resonanceState.currentIndex;
+                const isPastStep = index < resonanceState.currentIndex;
+
+                // Pulse effect for current step
+                const pulseScale = isCurrentStep ? (Math.sin(resonanceState.pulseTimer / resonanceState.pulseDuration * Math.PI * 2) * 0.2 + 1) : 1;
+
+                // Circle background
+                ctx.beginPath();
+                ctx.arc(x, patternY, 25 * pulseScale, 0, Math.PI * 2);
+                ctx.fillStyle = isPastStep ? pattern.color : (isCurrentStep ? 'rgba(255, 255, 255, 0.2)' : 'rgba(100, 100, 100, 0.3)');
+                ctx.fill();
+
+                if (isCurrentStep) {
+                    ctx.strokeStyle = pattern.color;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+
+                // Arrow
+                ctx.font = `${isCurrentStep ? '32' : '28'}px "Roboto Mono"`;
+                ctx.fillStyle = isPastStep ? '#000' : (isCurrentStep ? pattern.color : '#666');
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(arrow, x, patternY);
+            });
+
+            // Draw progress bar
+            const barWidth = 400;
+            const barHeight = 30;
+            const barX = centerX - barWidth / 2;
+            const barY = centerY + 220;
+
+            // Background
+            ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+
+            // Progress fill
+            ctx.fillStyle = pattern.color;
+            ctx.fillRect(barX, barY, barWidth * resonanceState.syncProgress, barHeight);
+
+            // Border
+            ctx.strokeStyle = pattern.color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+            // Progress text
+            ctx.font = '18px "Roboto Mono"';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${resonanceState.successCount} / ${resonanceState.requiredSuccess}`, centerX, barY + barHeight + 25);
+
+            // Draw feedback
+            if (resonanceState.feedbackTimer > 0) {
+                const alpha = resonanceState.feedbackTimer / 0.3;
+                ctx.globalAlpha = alpha;
+                ctx.font = 'bold 40px "Roboto Mono"';
+                ctx.fillStyle = resonanceState.lastCorrect ? pattern.color : '#FF0000';
+                ctx.textAlign = 'center';
+                ctx.fillText(resonanceState.lastCorrect ? '✓ SYNC!' : '✗ DESYNC!', centerX, centerY - 100);
+                ctx.globalAlpha = 1;
+            }
+
+            // Draw particles
+            resonanceState.particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // Instructions
+            ctx.font = '18px "Roboto Mono"';
+            ctx.fillStyle = '#AAAAAA';
+            ctx.textAlign = 'center';
+            ctx.fillText('Press WASD keys to match the rhythm', centerX, canvas.height - 80);
+            ctx.fillText('ESC to cancel', centerX, canvas.height - 50);
         }
 
         let frameCounter = 0;
