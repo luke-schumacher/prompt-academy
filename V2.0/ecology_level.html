@@ -144,6 +144,7 @@
                 bioBotMood: 'happy', // 'happy', 'sad'
                 mistakes: 0,
                 levelComplete: false,
+                completeMessageTimer: 0,
                 dialogueHistory: [],
                 showTerraVaultButton: false,
                 showPromptInterface: false,
@@ -196,6 +197,7 @@
         const ratioImageL = new Image();
         const bioBotIdleStandingImage = new Image();
         const bioBotIdleAnimationImage = new Image();
+        const bioBotHappyImage = new Image();
         const bioBotHeadImage = new Image();
         const bioBotSadImage = new Image();
         const holoBloomInfoImage = new Image();
@@ -208,6 +210,7 @@
         ratioImageL.src = 'assets/start/Ratio_L.png';
         bioBotIdleStandingImage.src = 'assets/level1_ecology/Idle_standing.png';
         bioBotIdleAnimationImage.src = 'assets/level1_ecology/idle_animation_biobot.png';
+        bioBotHappyImage.src = 'assets/level1_ecology/biobot_happy.png';
         bioBotHeadImage.src = 'assets/level1_ecology/Biobot_head.png';
         bioBotSadImage.src = 'assets/level1_ecology/Biobot_sad.png';
         holoBloomInfoImage.src = 'assets/level1_ecology/holobloom_terravault.png';
@@ -263,6 +266,7 @@
                 bioBotMood: 'happy',
                 mistakes: 0,
                 levelComplete: false,
+                completeMessageTimer: 0,
                 dialogueHistory: [],
                 showTerraVaultButton: false,
                 showPromptInterface: false,
@@ -367,11 +371,19 @@
                     handleRatioNavigation();
                 } else if (id === 'door_exit') {
                     if (ecologyState.levelComplete) {
-                        startDialogue("Ratio", "Well done completing the Bio-Dome challenge. You may leave when ready.", [
-                            { text: "Stay in Bio-Dome", action: closeDialogue },
-                            { text: "Exit (Coming Soon)", action: () => {
-                                startDialogue("System", "More levels coming soon! For now, stay and explore the Bio-Dome.");
-                            }}
+                        startDialogue("Ratio", "Well done completing the Bio-Dome challenge. Where would you like to go?", [
+                            { text: "Academy Courtyard", action: () => {
+                                saveGame();
+                                // Navigate back to start level (works with both local and Netlify)
+                                window.location.href = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                                    ? 'start_level.html'
+                                    : '/start_level';
+                            }},
+                            { text: "Visit Terra-Vault", action: () => {
+                                closeDialogue();
+                                transitionToTerraVault();
+                            }},
+                            { text: "Stay here", action: closeDialogue }
                         ]);
                     } else {
                         startDialogue("Ratio", "Leaving already? You haven't even completed the challenge yet!", [
@@ -398,14 +410,25 @@
                     }, 500);
                 } else if (id === 'exit_door') {
                     if (ecologyState.levelComplete) {
-                        startDialogue("Ratio", "Well done completing the Bio-Dome challenge. You may leave when ready.", [
-                            { text: "Return to Bio-Dome Main", action: () => {
+                        startDialogue("Ratio", "Well done completing the Bio-Dome challenge. Where would you like to go?", [
+                            { text: "Academy Courtyard", action: () => {
+                                saveGame();
+                                // Navigate back to start level (works with both local and Netlify)
+                                window.location.href = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                                    ? 'start_level.html'
+                                    : '/start_level';
+                            }},
+                            { text: "Visit Terra-Vault", action: () => {
+                                closeDialogue();
+                                transitionToTerraVault();
+                            }},
+                            { text: "Bio-Dome Main", action: () => {
                                 gameState.gameMode = 'bioDomeMain';
                                 gameState.player.x = 750;
                                 gameState.player.y = 700;
                                 closeDialogue();
                             }},
-                            { text: "Stay at Workbench", action: closeDialogue }
+                            { text: "Stay here", action: closeDialogue }
                         ]);
                     } else {
                         startDialogue("Ratio", "You can't leave yet. Complete the challenge first!");
@@ -478,6 +501,13 @@
                 startDialogue("Ratio", "First, you should talk to the Bio-Bot over there to begin your training.");
             } else if (ecologyState.levelComplete) {
                 startDialogue("Ratio", "Congratulations on completing the challenge! Where would you like to go?", [
+                    { text: "Academy Courtyard", action: () => {
+                        saveGame();
+                        // Navigate back to start level (works with both local and Netlify)
+                        window.location.href = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                            ? 'start_level.html'
+                            : '/start_level';
+                    }},
                     { text: "Visit Workbench", action: () => {
                         closeDialogue();
                         transitionToWorkbench();
@@ -594,6 +624,7 @@
             if (first === 'soil' && second === 'water') {
                 ecologyState.bioBotMood = 'happy';
                 ecologyState.levelComplete = true;
+                ecologyState.completeMessageTimer = 5;
                 ecologyState.showPromptInterface = false;
 
                 startDialogue("Bio-Bot", "HOLO-BLOOM SUCCESSFULLY GERMINATED. THANK YOU, CADET.", [
@@ -694,6 +725,7 @@
                     ecologyState.showSpeciesSelection = false;
                     return;
                 }
+                return; // Prevent other keys from being processed when species selection is active
             }
 
             // Prompt interface controls
@@ -781,6 +813,11 @@
 
             handlePlayerAnimation(deltaTime);
             updateBioBotAnimation(deltaTime);
+
+            // Update completion message timer
+            if (ecologyState.completeMessageTimer > 0) {
+                ecologyState.completeMessageTimer -= deltaTime;
+            }
 
             // Animate prompt interface fade-in
             if (ecologyState.showPromptInterface) {
@@ -883,8 +920,42 @@
                 drawTerraVault();
             }
 
+            drawProgressionBar();
             drawHud();
             if (gameState.activeDialogue.isActive) drawDialogueBox();
+        }
+
+        function drawProgressionBar() {
+            const barWidth = 600;
+            const barHeight = 40;
+            const barX = (canvas.width / 2) - (barWidth / 2);
+            const barY = 20;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            ctx.strokeStyle = '#888';
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+            ctx.font = '18px "Roboto Mono"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const inLevel2 = gameState.gameMode === 'bioDomeMain' || gameState.gameMode === 'workbench' || gameState.gameMode === 'terraVault';
+
+            ctx.fillStyle = '#00FFFF';
+            ctx.fillText("Tutorial", barX + (barWidth / 6), barY + barHeight / 2);
+
+            ctx.fillStyle = '#888';
+            ctx.fillText("-->", barX + (barWidth / 3), barY + barHeight / 2);
+
+            ctx.fillStyle = '#00FFFF';
+            ctx.fillText("Level 1", barX + (barWidth / 2), barY + barHeight / 2);
+
+            ctx.fillStyle = '#888';
+            ctx.fillText("-->", barX + (barWidth * 2 / 3), barY + barHeight / 2);
+
+            ctx.fillStyle = inLevel2 ? '#00FFFF' : '#555';
+            ctx.fillText("Level 2", barX + (barWidth * 5 / 6), barY + barHeight / 2);
         }
 
         function drawBioDomeMain() {
@@ -903,8 +974,15 @@
                 if (bioBotSadImage.complete) {
                     ctx.drawImage(bioBotSadImage, bioBotObj.x, bioBotObj.y + ecologyState.bioBotBobOffset, bioBotWidth, bioBotHeight);
                 }
+            } else if (ecologyState.levelComplete && ecologyState.bioBotMood === 'happy') {
+                // Happy bot after successful completion
+                if (bioBotHappyImage.complete) {
+                    ctx.drawImage(bioBotHappyImage,
+                        bioBotObj.x, bioBotObj.y + ecologyState.bioBotBobOffset,
+                        bioBotWidth, bioBotHeight);
+                }
             } else {
-                // Happy bot - use static idle standing image on main screen
+                // Default idle bot - use static idle standing image on main screen
                 if (bioBotIdleStandingImage.complete) {
                     ctx.drawImage(bioBotIdleStandingImage,
                         bioBotObj.x, bioBotObj.y + ecologyState.bioBotBobOffset,
@@ -944,8 +1022,13 @@
                 if (bioBotSadImage.complete) {
                     ctx.drawImage(bioBotSadImage, bioBotX, finalY, bioBotWidth, bioBotHeight);
                 }
+            } else if (ecologyState.levelComplete && ecologyState.bioBotMood === 'happy') {
+                // Happy bot after successful completion
+                if (bioBotHappyImage.complete) {
+                    ctx.drawImage(bioBotHappyImage, bioBotX, finalY, bioBotWidth, bioBotHeight);
+                }
             } else {
-                // Happy bot - use blinking animation on workbench (like Gary's animation)
+                // Default idle bot - use blinking animation on workbench (like Gary's animation)
                 if (bioBotIdleAnimationImage.complete) {
                     // Each frame is 408x612, stacked vertically (like Gary's idle animation)
                     const singleFrameWidth = 408;
@@ -996,6 +1079,16 @@
 
             if (gameState.ecologyState.showPromptInterface) {
                 drawPromptInterface();
+            }
+
+            // Draw Level 2 Complete message
+            if (gameState.ecologyState.completeMessageTimer > 0) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 80, canvas.width, 60);
+                ctx.font = '40px "Press Start 2P"';
+                ctx.fillStyle = '#00FFFF';
+                ctx.textAlign = 'center';
+                ctx.fillText("Level 2 Completed!", canvas.width / 2, 125);
             }
         }
 
@@ -1497,7 +1590,7 @@
 
             const assetsToLoad = [
                 bioDomeImage, workbenchImage, terraVaultImage, playerImage, ratioImageL, ratioImageR,
-                bioBotIdleStandingImage, bioBotIdleAnimationImage, bioBotHeadImage, bioBotSadImage, holoBloomInfoImage
+                bioBotIdleStandingImage, bioBotIdleAnimationImage, bioBotHappyImage, bioBotHeadImage, bioBotSadImage, holoBloomInfoImage
             ];
             let loadedCount = 0;
             const totalAssets = assetsToLoad.length;
