@@ -266,7 +266,8 @@
             { id: 'broken_gary', name: 'Deactivated GARY', x: 1380, y: 450, width: 60, height: 78 },
             { id: 'cog', name: 'Cognitive Cog', x: 750, y: 600, width: 20, height: 20 }, // Moved closer to center and loom
             { id: 'loom', name: 'Logic Loom', x: 800, y: 500, width: 20, height: 20 }, // Centered and closer
-            { id: 'chip', name: 'Empathy Chip', x: 850, y: 600, width: 20, height: 20 }  // Moved closer to center and loom
+            { id: 'chip', name: 'Empathy Chip', x: 850, y: 600, width: 20, height: 20 },  // Moved closer to center and loom
+            { id: 'biodome_door', name: 'Bio-Dome Entrance', x: 800, y: 550, width: 100, height: 150 } // Near empathy chip, invisible door
         ];
         
         const startScreenImage = new Image();
@@ -561,6 +562,17 @@
                         getGaryDialogue("The user is talking to you after you have been fixed. Thank them again and offer to help.");
                     } else {
                         handleGaryInteraction();
+                    }
+                } else if (id === 'biodome_door') {
+                    if (gameState.level1State.levelComplete) {
+                        // Navigate to ecology level (works with both local and Netlify)
+                        window.location.href = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                            ? 'ecology_level.html'
+                            : '/ecology_level';
+                    } else {
+                        startDialogue("Ratio", "The Bio-Dome is locked. You'll need to complete Level 1 first by helping GARY.", [
+                            { text: "Understood", action: closeDialogue }
+                        ]);
                     }
                 }
             }
@@ -1032,18 +1044,19 @@
             
             if (playerImage.complete) {
                 const frameX = player.moving ? player.frameX : 0;
-                ctx.drawImage(playerImage, frameX * player.spriteWidth, player.frameY * player.spriteHeight, 
+                ctx.drawImage(playerImage, frameX * player.spriteWidth, player.frameY * player.spriteHeight,
                               player.spriteWidth, player.spriteHeight, startFinn.x, startFinn.y, PLAYER_DISPLAY_WIDTH, PLAYER_DISPLAY_HEIGHT);
             }
             if (ratioImageR.complete) ctx.drawImage(ratioImageR, startRatio.x, startRatio.y, RATIO_DISPLAY_WIDTH, RATIO_DISPLAY_HEIGHT);
-            
-            if (fixedGaryIdleImage.complete) {
-                const frameHeight = fixedGaryIdleImage.height / 3;
-                ctx.drawImage(fixedGaryIdleImage, 0, startGary.frame * frameHeight,
-                              fixedGaryIdleImage.width, frameHeight,
-                              startGary.x, startGary.y,
-                              GROUNDSKEEPER_DISPLAY_WIDTH * 1.8, GROUNDSKEEPER_DISPLAY_HEIGHT * 1.8);
-            }
+
+            // GARY removed from start screen
+            // if (fixedGaryIdleImage.complete) {
+            //     const frameHeight = fixedGaryIdleImage.height / 3;
+            //     ctx.drawImage(fixedGaryIdleImage, 0, startGary.frame * frameHeight,
+            //                   fixedGaryIdleImage.width, frameHeight,
+            //                   startGary.x, startGary.y,
+            //                   GROUNDSKEEPER_DISPLAY_WIDTH * 1.8, GROUNDSKEEPER_DISPLAY_HEIGHT * 1.8);
+            // }
         }
 
         function drawLeaves() {
@@ -1320,7 +1333,7 @@
         }
 
         function drawProgressionBar() {
-            const barWidth = 400;
+            const barWidth = 600;
             const barHeight = 40;
             const barX = (canvas.width / 2) - (barWidth / 2);
             const barY = 20;
@@ -1333,18 +1346,24 @@
             ctx.font = '18px "Roboto Mono"';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            
+
             const inTutorial = gameState.gameMode === 'tutorial';
             const inLevel1 = gameState.gameMode === 'level1';
 
             ctx.fillStyle = inTutorial || inLevel1 ? '#00FFFF' : '#555';
-            ctx.fillText("Tutorial", barX + (barWidth / 4), barY + barHeight / 2);
+            ctx.fillText("Tutorial", barX + (barWidth / 6), barY + barHeight / 2);
 
             ctx.fillStyle = '#888';
-            ctx.fillText("-->", barX + (barWidth / 2), barY + barHeight / 2);
+            ctx.fillText("-->", barX + (barWidth / 3), barY + barHeight / 2);
 
             ctx.fillStyle = inLevel1 ? '#00FFFF' : '#555';
-            ctx.fillText("Level 1", barX + (barWidth * 3 / 4), barY + barHeight / 2);
+            ctx.fillText("Level 1", barX + (barWidth / 2), barY + barHeight / 2);
+
+            ctx.fillStyle = '#888';
+            ctx.fillText("-->", barX + (barWidth * 2 / 3), barY + barHeight / 2);
+
+            ctx.fillStyle = '#555';
+            ctx.fillText("Level 2", barX + (barWidth * 5 / 6), barY + barHeight / 2);
         }
 
         function drawHud() {
