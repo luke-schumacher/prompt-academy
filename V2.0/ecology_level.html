@@ -115,6 +115,13 @@
         const BIOBOT_DISPLAY_WIDTH = 80;
         const BIOBOT_DISPLAY_HEIGHT = 80;
 
+        // EGG CONSTANTS - Adjust these to position the egg on the workbench
+        const EGG_WORKBENCH_CENTER_X = 736; // Dead center X of workbench (half of canvas width 1536)
+        const EGG_WORKBENCH_CENTER_Y = 518; // Dead center Y of workbench (half of canvas height 1024)
+        const EGG_OFFSET_X = 0; // Fine-tune horizontal position (+ moves right, - moves left)
+        const EGG_OFFSET_Y = 0; // Fine-tune vertical position (+ moves down, - moves up)
+        const EGG_DISPLAY_SIZE = 120; // Size to display both egg and animation (square)
+
         let gameState = {
             gameMode: 'bioDomeMain', // bioDomeMain, workbench, terraVault, bioBotCutscene, completion
             transitionAlpha: 0,
@@ -153,7 +160,10 @@
                 speciesSelectionIndex: 0, // Which species is currently selected
                 bioBotBobOffset: 0, // For up/down bobbing motion
                 holoBloomInfoRead: false, // Track if player has read the Holo-Bloom info
-                cooldownUntil: null // Timestamp for 12-hour cooldown after 2 mistakes
+                cooldownUntil: null, // Timestamp for 12-hour cooldown after 2 mistakes
+                germinationState: 'egg', // 'egg', 'germinating', 'complete'
+                germinationFrame: 0, // Current frame of germination animation (0-5)
+                germinationTimer: 0 // Timer for animation frame progression
             }
         };
 
@@ -201,6 +211,8 @@
         const bioBotHeadImage = new Image();
         const bioBotSadImage = new Image();
         const holoBloomInfoImage = new Image();
+        const eggImage = new Image();
+        const eggGerminationImage = new Image();
 
         bioDomeImage.src = 'assets/level1_ecology/ecology_background.png';
         workbenchImage.src = 'assets/level1_ecology/workbench_background.png';
@@ -214,6 +226,8 @@
         bioBotHeadImage.src = 'assets/level1_ecology/Biobot_head.png';
         bioBotSadImage.src = 'assets/level1_ecology/Biobot_sad.png';
         holoBloomInfoImage.src = 'assets/level1_ecology/holobloom_terravault.png';
+        eggImage.src = 'assets/level1_ecology/egg.png';
+        eggGerminationImage.src = 'assets/level1_ecology/egg_germination.png';
 
         const ratioPersona = {
             systemPrompt: `You are Ratio, a cantankerous but wise guide at the Prompt Academy's Bio-Dome. You're introducing a student to the ecology school where Bio-Bots care for modified plant species. You can be sarcastic and critical when students make mistakes, but you ultimately want them to learn. Keep responses to 1-2 short sentences. You have a particular soft spot for the Bio-Bots and get annoyed when students upset them.`
@@ -231,6 +245,28 @@
                 const savedData = localStorage.getItem('ecologyLevelSave_v1');
                 if (savedData) {
                     gameState = JSON.parse(savedData);
+
+                    // Fix: Clear any active dialogues since action functions can't be serialized
+                    gameState.activeDialogue = {
+                        isActive: false,
+                        speaker: null,
+                        text: '',
+                        displayText: '',
+                        charIndex: 0,
+                        options: [],
+                        selectedOption: 0
+                    };
+
+                    // Fix: Clear prompt interface if it was active (prevents issues with saved state)
+                    if (gameState.ecologyState && gameState.ecologyState.showPromptInterface) {
+                        gameState.ecologyState.showPromptInterface = false;
+                    }
+
+                    // Fix: Clear species selection if it was active
+                    if (gameState.ecologyState && gameState.ecologyState.showSpeciesSelection) {
+                        gameState.ecologyState.showSpeciesSelection = false;
+                    }
+
                     showSaveFeedback('Save data loaded!');
                 }
             } catch (error) {
@@ -275,7 +311,10 @@
                 speciesSelectionIndex: 0,
                 bioBotBobOffset: 0,
                 holoBloomInfoRead: false,
-                cooldownUntil: null
+                cooldownUntil: null,
+                germinationState: 'egg',
+                germinationFrame: 0,
+                germinationTimer: 0
             };
 
             closeDialogue();
@@ -623,20 +662,14 @@
             // Correct answer: soil first, water second
             if (first === 'soil' && second === 'water') {
                 ecologyState.bioBotMood = 'happy';
-                ecologyState.levelComplete = true;
-                ecologyState.completeMessageTimer = 5;
                 ecologyState.showPromptInterface = false;
 
-                startDialogue("Bio-Bot", "HOLO-BLOOM SUCCESSFULLY GERMINATED. THANK YOU, CADET.", [
-                    { text: "Continue", action: () => {
-                        startDialogue("Ratio", "Well, well. You actually did it. I'm... mildly impressed. You can now exit through the door when ready.", [
-                            { text: "Great!", action: () => {
-                                saveGame();
-                                closeDialogue();
-                            }}
-                        ]);
-                    }}
-                ]);
+                // Start germination animation
+                ecologyState.germinationState = 'germinating';
+                ecologyState.germinationFrame = 0;
+                ecologyState.germinationTimer = 0;
+
+                // Dialogue will be shown after germination animation completes
             } else {
                 ecologyState.bioBotMood = 'sad';
                 ecologyState.mistakes++;
@@ -813,6 +846,7 @@
 
             handlePlayerAnimation(deltaTime);
             updateBioBotAnimation(deltaTime);
+            updateGerminationAnimation(deltaTime);
 
             // Update completion message timer
             if (ecologyState.completeMessageTimer > 0) {
@@ -906,6 +940,39 @@
             // Only update bobbing motion - no frame animation to avoid "scrolling window" effect
             // Entire static image moves up/down very gently
             ecologyState.bioBotBobOffset = Math.sin(Date.now() / 5000) * 1; // Bobs up and down 1 pixel very gently
+        }
+
+        function updateGerminationAnimation(deltaTime) {
+            const { ecologyState } = gameState;
+
+            if (ecologyState.germinationState === 'germinating') {
+                ecologyState.germinationTimer += deltaTime;
+
+                // Advance to next frame every 0.3 seconds (6 frames = 1.8 seconds total)
+                if (ecologyState.germinationTimer >= 0.3) {
+                    ecologyState.germinationTimer = 0;
+                    ecologyState.germinationFrame++;
+
+                    // Animation complete after frame 5 (6 frames total: 0-5)
+                    if (ecologyState.germinationFrame >= 6) {
+                        ecologyState.germinationState = 'complete';
+                        ecologyState.levelComplete = true;
+                        ecologyState.completeMessageTimer = 5;
+
+                        // Show success dialogue
+                        startDialogue("Bio-Bot", "HOLO-BLOOM SUCCESSFULLY GERMINATED. THANK YOU, CADET.", [
+                            { text: "Continue", action: () => {
+                                startDialogue("Ratio", "Well, well. You actually did it. I'm... mildly impressed. You can now exit through the door when ready.", [
+                                    { text: "Great!", action: () => {
+                                        saveGame();
+                                        closeDialogue();
+                                    }}
+                                ]);
+                            }}
+                        ]);
+                    }
+                }
+            }
         }
 
         function draw() {
@@ -1048,6 +1115,9 @@
             }
             ctx.shadowBlur = 0;
 
+            // Draw egg or germination animation
+            drawEggAndGermination();
+
             // Draw mistake counter if mistakes have been made
             if (gameState.ecologyState.mistakes > 0 && !gameState.ecologyState.levelComplete) {
                 const mistakeBoxX = canvas.width - 270;
@@ -1089,6 +1159,77 @@
                 ctx.fillStyle = '#00FFFF';
                 ctx.textAlign = 'center';
                 ctx.fillText("Level 2 Completed!", canvas.width / 2, 125);
+            }
+        }
+
+        function drawEggAndGermination() {
+            const { ecologyState } = gameState;
+
+            // Calculate egg position (dead center of workbench with offsets)
+            const eggCenterX = EGG_WORKBENCH_CENTER_X + EGG_OFFSET_X;
+            const eggCenterY = EGG_WORKBENCH_CENTER_Y + EGG_OFFSET_Y;
+
+            // Calculate top-left corner from center point
+            const eggX = eggCenterX - (EGG_DISPLAY_SIZE / 2);
+            const eggY = eggCenterY - (EGG_DISPLAY_SIZE / 2);
+
+            if (ecologyState.germinationState === 'egg') {
+                // Draw static egg
+                if (eggImage.complete) {
+                    ctx.drawImage(eggImage, eggX, eggY, EGG_DISPLAY_SIZE, EGG_DISPLAY_SIZE);
+                }
+            } else if (ecologyState.germinationState === 'germinating') {
+                // Draw germination animation with progressive growth and downward movement
+                if (eggGerminationImage.complete) {
+                    // Each frame is 492x492, stacked vertically (total: 492x2952)
+                    const frameWidth = 492;
+                    const frameHeight = 492;
+                    const currentFrame = ecologyState.germinationFrame;
+
+                    // Progressive downward movement (0 to 15 pixels)
+                    const progressRatio = currentFrame / 5; // 0.0 to 1.0
+                    const yOffset = progressRatio * 15;
+
+                    // Progressive size increase to final size (10% bigger than base + 25)
+                    const finalSizeTarget = (EGG_DISPLAY_SIZE + 25) * 1.1;
+                    const sizeIncrease = progressRatio * (finalSizeTarget - EGG_DISPLAY_SIZE);
+                    const currentSize = EGG_DISPLAY_SIZE + sizeIncrease;
+
+                    // Progressive right movement (0 to 1 pixel)
+                    const xOffset = progressRatio * 1;
+
+                    // Recalculate position to keep centered while growing
+                    const adjustedX = eggCenterX - (currentSize / 2) + xOffset;
+                    const adjustedY = eggCenterY - (currentSize / 2) + yOffset;
+
+                    // Draw the current frame
+                    ctx.drawImage(
+                        eggGerminationImage,
+                        0, currentFrame * frameHeight, // Source: select vertical frame
+                        frameWidth, frameHeight, // Source: frame dimensions
+                        adjustedX, adjustedY, // Destination with offset
+                        currentSize, currentSize // Destination size (growing)
+                    );
+                }
+            } else if (ecologyState.germinationState === 'complete') {
+                // Draw the last frame of germination (frame 5) with final size and position
+                if (eggGerminationImage.complete) {
+                    const frameWidth = 492;
+                    const frameHeight = 492;
+
+                    // Final position and size (10% bigger than base + 25, and 1 pixel to the right)
+                    const finalSize = (EGG_DISPLAY_SIZE + 25) * 1.1;
+                    const finalX = eggCenterX - (finalSize / 2) + 1; // 1 pixel to the right
+                    const finalY = eggCenterY - (finalSize / 2) + 15; // 15 pixels down
+
+                    ctx.drawImage(
+                        eggGerminationImage,
+                        0, 5 * frameHeight, // Last frame (frame 5)
+                        frameWidth, frameHeight,
+                        finalX, finalY,
+                        finalSize, finalSize
+                    );
+                }
             }
         }
 
@@ -1590,7 +1731,8 @@
 
             const assetsToLoad = [
                 bioDomeImage, workbenchImage, terraVaultImage, playerImage, ratioImageL, ratioImageR,
-                bioBotIdleStandingImage, bioBotIdleAnimationImage, bioBotHappyImage, bioBotHeadImage, bioBotSadImage, holoBloomInfoImage
+                bioBotIdleStandingImage, bioBotIdleAnimationImage, bioBotHappyImage, bioBotHeadImage, bioBotSadImage, holoBloomInfoImage,
+                eggImage, eggGerminationImage
             ];
             let loadedCount = 0;
             const totalAssets = assetsToLoad.length;
