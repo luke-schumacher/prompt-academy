@@ -1,0 +1,700 @@
+================================================================================
+CHANGES IMPLEMENTATION GUIDE
+================================================================================
+From: Original start_level.html (V2.0)
+To: Modified start_level_local.html (with all improvements)
+
+Each change is numbered and can be implemented independently.
+
+================================================================================
+SECTION 1: SYSTEM PROMPTS - RATIO CHARACTER
+================================================================================
+
+CHANGE 1.1: Split RATIO System Prompt (Tutorial vs Level 1)
+-----------------------------------------------------------
+LOCATION: Lines ~407-416 (after garyPersona definition)
+
+ORIGINAL (Single prompt for all scenarios):
+```javascript
+const ratioPersona = {
+    systemPrompt: `You are Ratio, an ancient, wise, and cryptic if cantankerous guide. You are leading a new student, the 'Cadet', through their first trial. Your goal is to guide them to sync with you, then open a mysterious door, and eventually fix a broken robot named GARY. Keep responses to 1-2 short, helpful sentences. Be encouraging but mysterious. Do not break character.`
+};
+```
+
+NEW (Split into two context-aware prompts):
+```javascript
+const ratioPersona = {
+    tutorialSystemPrompt: `You are Ratio, an old, wise, and grumpy guide. You are leading a new student through their first trial at the Prompt Academy. You are calling them on a journey, but pretending that you did not need them to be there.
+
+RIGHT NOW: Your goal is to get them to sync with you, then help them open a mysterious door. The door is special - it needs to be told WHO it is and what it should do for it to work.
+
+Keep responses super short, one sentence. Be encouraging and a little playful. Do not be mean or insulting. Use simple words - you are talking to kids aged 10-13. You can occasionally call them "friend" but don't overuse it. Do not mention GARY or anything beyond the door yet.`,
+
+    level1SystemPrompt: `You are Ratio, an old, wise, and grumpy guide. You are leading a new student through the Prompt Academy. You've just entered the main grounds together and now need to help them fix a broken robot named GARY.
+
+Keep responses super short, one sentence. Be encouraging and a little playful. Do not be mean or insulting. Use simple words - you are talking to kids aged 10-13. You can occasionally call them "friend" but don't overuse it.`
+};
+```
+
+IMPLEMENTATION NOTES:
+- Remove the old single systemPrompt
+- Add tutorialSystemPrompt (used during tutorial phase)
+- Add level1SystemPrompt (used during Level 1 phase)
+- Context-aware: tutorial doesn't mention GARY, level1 focuses on GARY
+
+WHY: Prevents RATIO from confusing players by mentioning future objectives.
+
+================================================================================
+SECTION 2: SYSTEM PROMPTS - GARY CHARACTER
+================================================================================
+
+No changes needed to GARY's systemPrompt structure.
+(Later sections will update GARY's dialogue text)
+
+================================================================================
+SECTION 3: GAME STATE - ADD NEW FLAG
+================================================================================
+
+CHANGE 3.1: Add doorHintShown Flag
+-----------------------------------
+LOCATION: tutorialState object (~Line 172-178)
+
+ORIGINAL:
+```javascript
+tutorialState: {
+    step: 0,
+    ratioSyncStep: 0,
+    doorOpen: false,
+    dialogueHistory: [],
+    controlsExplained: false,
+},
+```
+
+NEW:
+```javascript
+tutorialState: {
+    step: 0,
+    ratioSyncStep: 0,
+    doorOpen: false,
+    doorHintShown: false,  // NEW: Track if door hint has been shown
+    dialogueHistory: [],
+    controlsExplained: false,
+},
+```
+
+IMPLEMENTATION NOTES:
+- Add doorHintShown: false after doorOpen
+- This flag tracks whether the player has seen RATIO's door hint
+- Used to avoid repeating the error/hint loop
+
+WHY: Creates progressive experience - hint shows once, then skips on retry.
+
+================================================================================
+SECTION 4: RATIO API FUNCTION - UPDATE SYSTEM PROMPT SELECTION
+================================================================================
+
+CHANGE 4.1: Make getRatioDialogue Use Context-Aware System Prompts
+------------------------------------------------------------------
+LOCATION: getRatioDialogue function (~Line 323-362)
+
+FIND THIS SECTION in getRatioDialogue function:
+```javascript
+const systemPrompt = ratioPersona.systemPrompt;  // OLD LINE
+```
+
+REPLACE WITH:
+```javascript
+// Use context-aware system prompt based on game mode
+const isTutorial = gameState.gameMode === 'tutorial';
+const systemPrompt = isTutorial ? ratioPersona.tutorialSystemPrompt : ratioPersona.level1SystemPrompt;
+const currentDialogueHistory = isTutorial ? gameState.tutorialState.dialogueHistory : gameState.level1State.dialogueHistory;
+```
+
+ALSO UPDATE the messages array line from:
+```javascript
+"messages": [ { role: "system", content: ratioPersona.systemPrompt }, ...gameState.tutorialState.dialogueHistory ],
+```
+
+TO:
+```javascript
+"messages": [ { role: "system", content: systemPrompt }, ...currentDialogueHistory ],
+```
+
+IMPLEMENTATION NOTES:
+- Check if in tutorial or level1 mode
+- Select appropriate system prompt
+- Use appropriate dialogue history
+- This ensures RATIO's personality matches the current context
+
+WHY: RATIO gives contextually appropriate responses based on game phase.
+
+================================================================================
+SECTION 5: RATIO SYNC DIALOGUE - COMPLETE REWRITE
+================================================================================
+
+CHANGE 5.1: Update Initial RATIO Greeting
+-----------------------------------------
+LOCATION: handleRatioSyncInteraction function, case 0 (~Line 491-500)
+
+ORIGINAL:
+```javascript
+case 0:
+    startDialogue("Ratio", "You have arrived. Tell me, traveler, who are you?", [
+        { text: "I am a student, here to learn.", action: () => {
+            tutorialState.ratioSyncStep = 1;
+            getRatioDialogue("The user says they are a student here to learn. Respond with a cryptic but welcoming remark, then offer to sync minds.");
+        }},
+        { text: "I am... not sure why I'm here.", action: () => {
+             tutorialState.ratioSyncStep = 1;
+             getRatioDialogue("The user says they are not sure why they are here. Respond with a philosophical musing about purpose, then offer to help them find it by syncing.");
+        }}
+    ]);
+    break;
+```
+
+NEW:
+```javascript
+case 0:
+    startDialogue("Ratio", "Wait…. Who the hell are you? What are you doing here?", [
+        { text: "I am just a human…", action: () => {
+            tutorialState.ratioSyncStep = 1;
+            handleRatioSyncInteraction();
+        }},
+        { text: "I'm… not really sure.", action: () => {
+            getRatioDialogue("The user says they are not sure why they are here. Respond with a light, playful comment that's a bit grumpy but not mean. Keep it super short, one sentence max.", () => {
+                tutorialState.ratioSyncStep = 1;
+                handleRatioSyncInteraction();
+            });
+        }}
+    ]);
+    break;
+```
+
+IMPLEMENTATION NOTES:
+- Changed greeting from formal to grumpy/casual
+- Simplified player options
+- First option moves directly to next step
+- Second option triggers AI response then moves to next step
+- Updated AI prompt to be clearer and less verbose
+
+WHY: More engaging, age-appropriate dialogue for 10-13 year olds.
+
+---
+
+CHANGE 5.2: Update Sync Offer Dialogue
+--------------------------------------
+LOCATION: handleRatioSyncInteraction function, case 1 (~Line 502-518)
+
+ORIGINAL:
+```javascript
+case 1:
+    startDialogue("Ratio", "Our paths are intertwined, it seems. To truly see this world, our minds must align. Shall we synchronize?", [
+        { text: "Synchronize with Ratio.", action: () => {
+            gameState.ratio.synced = true;
+            tutorialState.step = 3;
+            gameState.ratio.x = gameState.player.x - 50;
+            gameState.ratio.y = gameState.player.y;
+            getRatioDialogue("The user agreed to sync. Welcome them and guide them towards the large door.");
+            closeDialogue();
+        }},
+        { text: "I'm not ready for that.", action: () => {
+            getRatioDialogue("The user is hesitant to sync. Reassure them that it is the only way forward.");
+            closeDialogue();
+        }}
+    ]);
+    break;
+```
+
+NEW:
+```javascript
+case 1:
+    startDialogue("Ratio", "Nevermind... I was about to head inside. Sync with me if you want to come.", [
+        { text: "Okay, let's sync.", action: () => {
+            gameState.ratio.synced = true;
+            tutorialState.step = 3;
+            gameState.ratio.x = gameState.player.x - 50;
+            gameState.ratio.y = gameState.player.y;
+            getRatioDialogue("The user agreed to sync. Welcome them and point them toward the door. Hint that you cannot open it yourself. Example sentences you could use: 'Welcome to the mess. Let's go, door's that way.' or 'All right then, here's the door. Give me a hand, will you? Obviously I don't have one.' Keep it super short, one sentence max.");
+        }},
+        { text: "Emmmm, no that sounds weird.", action: () => {
+            getRatioDialogue("The user is refusing to sync. Tell them there's nowhere else to go and nothing else to do - they need to sync. Use one of these examples or something VERY similar (don't change much): 'Well, there's nowhere else to go anyway.' or 'Suit yourself, but there's nothing else to do here.' or 'Your call, friend, but you're kind of stuck otherwise.' Keep it super short, one sentence max. Stick close to the examples.");
+        }}
+    ]);
+    break;
+```
+
+IMPLEMENTATION NOTES:
+- Changed sync offer to casual, grumpy tone
+- Updated player option text
+- Enhanced AI prompts with specific examples
+- Removed closeDialogue() from sync action (RATIO speaks after)
+- Kept closeDialogue() for refusal (allows player to walk away)
+
+WHY: Natural dialogue, clearer AI instructions, better player freedom.
+
+================================================================================
+SECTION 6: DOOR INTERACTION - COMPLETE RESTRUCTURE
+================================================================================
+
+CHANGE 6.1: Update Door Display Name and Interaction Prompt
+-----------------------------------------------------------
+LOCATION:
+1. Object definition (~Line 247)
+2. Interaction prompt display (~Line 1085)
+
+FOR OBJECT DEFINITION:
+No change needed - keep as 'Academy Entrance'
+
+FOR INTERACTION PROMPT:
+FIND:
+```javascript
+const textPart3 = ` to interact with ${gameState.nearbyObject.name}`;
+```
+
+REPLACE WITH:
+```javascript
+const textPart3 = gameState.nearbyObject.id === 'door'
+    ? ` to open the door`
+    : ` to interact with ${gameState.nearbyObject.name}`;
+```
+
+IMPLEMENTATION NOTES:
+- Conditional check for door ID
+- Shows "Press [E] to open the door" instead of "interact with Academy Entrance"
+- Other objects keep normal interaction text
+
+WHY: More natural language - humans "open doors", not "interact with entrances".
+
+---
+
+CHANGE 6.2: Complete Door Interaction Logic Rewrite
+---------------------------------------------------
+LOCATION: handleInteraction function, door section (~Line 447-469)
+
+This is a MAJOR rewrite. Remove the entire old door section and replace with new code.
+
+ORIGINAL SECTION TO REMOVE:
+```javascript
+} else if (id === 'door' && gameState.ratio.synced && !tutorialState.doorOpen) {
+    startDialogue("Finn", "This... obstacle... seems to be a door, but it won't budge.", [
+        { text: "Try command: 'I order you to open!'", action: () => {
+            startDialogue("Door", "*The door remains silent and unmoving.*", [{ text: "Continue", action: () => {
+                getRatioDialogue("The user tried a direct command on the door and it failed. Explain that some entities need a persona, a role to play, before they can understand instructions. Hint that they should try giving the door a role.");
+            } }]);
+        }},
+        { text: "Try query: 'Are you a door?'", action: () => {
+            startDialogue("Door", "*A faint hum is the only response.*", [{ text: "Continue", action: () => {
+                getRatioDialogue("The user tried a simple query on the door and it failed. Explain that some entities need a persona, a role to play, before they can understand instructions. Hint that they should try giving the door a role.");
+            } }]);
+        }},
+        { text: "Try persona: 'Act as a door that is unlocked and open.'", action: () => {
+            tutorialState.doorOpen = true;
+            startDialogue("Door", "*With a deep groan, the ancient mechanism turns and the door swings open.*", [{ text: "Enter", action: closeDialogue }]);
+            tutorialState.step = 4;
+            saveGame();
+        }},
+    ]);
+}
+```
+
+NEW SECTION TO ADD:
+```javascript
+} else if (id === 'door' && gameState.ratio.synced && !tutorialState.doorOpen) {
+    // Function to show door command options
+    const showDoorOptions = () => {
+        startDialogue("Door", "Pick a command:", [
+            { text: "'I order you to open!'", action: () => {
+                startDialogue("Door", "*The door remains silent and unmoving.*", [{ text: "Continue", action: () => {
+                    getRatioDialogue("The command failed. The door doesn't know what it is. Hint that it needs to be told what it is. Example: 'It doesn't know what it is - try telling it directly.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.");
+                } }]);
+            }},
+            { text: "'Open the door please'", action: () => {
+                startDialogue("Door", "*A silent hum.... no response.*", [{ text: "Continue", action: () => {
+                    getRatioDialogue("The user tried being polite but the door still didn't respond. The door doesn't know it's a door. Hint that it needs to be told what it is and what to do. Example: 'Being nice won't help if it doesn't know it's a door - tell it what it is.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.");
+                } }]);
+            }},
+            { text: "'Act like a door, you are unlocked, now open!'", action: () => {
+                tutorialState.doorOpen = true;
+                startDialogue("Door", "*With a deep groan, the door swings open.*", [{ text: "Enter", action: closeDialogue }]);
+                tutorialState.step = 4;
+                saveGame();
+            }},
+        ]);
+    };
+
+    // First time: Show error and RATIO's hint
+    if (!tutorialState.doorHintShown) {
+        startDialogue("Door", "Error, command not understood.", [
+            { text: "Continue", action: () => {
+                // RATIO immediately steps in with helpful hint
+                getRatioDialogue("The door just gave an error. Explain that this door forgets what it is sometimes and doesn't know what to do. Tell the user to try telling the door what it's supposed to be and what it should do. Be clear and helpful. Example: 'This door forgets what it is sometimes - try telling it what it's supposed to be.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.", () => {
+                    // Mark hint as shown and show options
+                    tutorialState.doorHintShown = true;
+                    gameState.activeDialogue.options = [
+                        { text: "Continue", action: showDoorOptions }
+                    ];
+                });
+            }}
+        ]);
+    } else {
+        // Subsequent times: Go directly to options
+        showDoorOptions();
+    }
+}
+```
+
+IMPLEMENTATION NOTES:
+- Completely removes Finn's opening line
+- Creates helper function showDoorOptions() for reusability
+- First interaction: Error → RATIO hint → Options
+- Subsequent interactions: Options directly (progressive UX)
+- Changed all 3 door option texts (removed labels like "Try command:")
+- Made all RATIO prompts strict with examples and DO NOT rules
+- Uses doorHintShown flag to track first interaction
+
+KEY CHANGES IN DETAIL:
+1. Initial door message: "Finn speaks" → "Error, command not understood."
+2. RATIO gives hint BEFORE options appear
+3. Option 1: "Try command: 'I order you to open!'" → "'I order you to open!'"
+4. Option 2: "Try query: 'Are you a door?'" → "'Open the door please'"
+5. Option 3: "Try persona: 'Act as a door...'" → "'Act like a door, you are unlocked, now open!'"
+6. Door prompt: No label → "Pick a command:"
+7. Progressive flow: Hint shows once, then direct to options
+
+WHY:
+- More natural (no narrator)
+- Clearer instruction pattern
+- Non-repetitive experience
+- Strict AI prompts prevent off-script responses
+
+================================================================================
+SECTION 7: GARY INTERACTION - DIALOGUE UPDATES
+================================================================================
+
+CHANGE 7.1: Update Component Names Throughout
+---------------------------------------------
+LOCATION: Multiple locations in handleGaryInteraction function
+
+FIND AND REPLACE:
+- "Cognitive Cog" → "Brain Chip"
+- "Logic Loom" → "Language Chip"
+- "Empathy Chip" → "Emotion Chip"
+
+This affects:
+- Step 1 options (Line ~537-539)
+- Step 2 options (Line ~544-545)
+- Step 3 option (Line ~550)
+
+IMPLEMENTATION EXAMPLE for Step 1:
+ORIGINAL:
+```javascript
+{ text: "Install Cognitive Cog (To think)", action: () => { ... }},
+{ text: "Install Logic Loom (To reason)", action: () => { ... }},
+{ text: "Install Empathy Chip (To feel)", action: () => { ... }}
+```
+
+NEW:
+```javascript
+{ text: "Install Brain Chip (To think)", action: () => { ... }},
+{ text: "Install Language Chip (To speak)", action: () => { ... }},
+{ text: "Install Emotion Chip (To feel)", action: () => { ... }}
+```
+
+NOTE: Also change "(To reason)" to "(To speak)" for Language Chip
+
+---
+
+CHANGE 7.2: Update GARY Dialogue Text
+-------------------------------------
+LOCATION: handleGaryInteraction function, all steps
+
+STEP 0 - Initial Contact:
+ORIGINAL:
+```javascript
+{ text: "We are here to help you find yourself.", action: () => { ... }},
+{ text: "You're a machine. We need to pass.", action: () => { ... }},
+```
+
+NEW:
+```javascript
+{ text: "I want to help you come back to life.", action: () => { ... }},
+{ text: "I want to pass to the next level.", action: () => { ... }},
+```
+
+---
+
+STEP 1 - First Module:
+ORIGINAL:
+```javascript
+startDialogue("GARY", "To build a consciousness, what is the first foundation? Present the first module.", [
+```
+
+NEW:
+```javascript
+startDialogue("RATIO", "To build GARY into life, what is most needed? Put in the first component.", [
+```
+
+NOTE: Speaker changes from GARY to RATIO!
+
+Also update error messages:
+ORIGINAL:
+```javascript
+{ text: "Install Logic Loom (To reason)", action: () => {
+    startDialogue("GARY", "SEQUENCE ERROR. Reason without a mind is hollow. A thinking entity must first exist before it can reason.", () => { level1State.garyDialogueStep = 0; });
+}},
+{ text: "Install Empathy Chip (To feel)", action: () => {
+    startDialogue("GARY", "SEQUENCE ERROR. Feeling without thought is chaos. A thinking entity must first exist before it can feel.", () => { level1State.garyDialogueStep = 0; });
+}}
+```
+
+NEW:
+```javascript
+{ text: "Install Language Chip (To speak)", action: () => {
+    startDialogue("GARY", "SEQUENCE ERROR.", [{ text: "Continue", action: () => {
+        startDialogue("RATIO", "Language without a mind??? GARY must first exist before it can talk.");
+        level1State.garyDialogueStep = 0;
+    }}]);
+}},
+{ text: "Install Emotion Chip (To feel)", action: () => {
+    startDialogue("GARY", "SEQUENCE ERROR.", [{ text: "Continue", action: () => {
+        startDialogue("RATIO", "Feeling without thinking is chaos! GARY must first exist before it can feel.");
+        level1State.garyDialogueStep = 0;
+    }}]);
+}}
+```
+
+---
+
+STEP 2 - Second Module:
+ORIGINAL:
+```javascript
+startDialogue("GARY", "I think, therefore I am... Acknowledged. A mind is formed. What gives it structure? Present the second module.", [
+```
+
+NEW:
+Add GARY line first, then RATIO speaks:
+```javascript
+startDialogue("GARY", "I compute, therefore I am... Acknowledged.", [{ text: "Continue", action: () => {
+    startDialogue("RATIO", "A mind is formed. Now make him talk? Present the second module.", [
+```
+
+Also update error for step 2:
+ORIGINAL:
+```javascript
+{ text: "Install Empathy Chip (To feel)", action: () => {
+    startDialogue("GARY", "SEQUENCE ERROR. Empathy before logic invites overload. A thinking mind needs the structure of reason before it can process emotion.", () => { level1State.garyDialogueStep = 0; });
+}}
+```
+
+NEW:
+```javascript
+{ text: "Install Emotion Chip (To feel)", action: () => {
+    startDialogue("GARY", "SEQUENCE ERROR. Emotion before logic invites overload. A thinking mind needs the structure of reason before it can process emotion.");
+    level1State.garyDialogueStep = 0;
+}}
+```
+
+---
+
+STEP 3 - Final Module:
+ORIGINAL:
+```javascript
+startDialogue("GARY", "Logic online. My thoughts have structure. What is the final piece to connect me? Present the final module.", [
+    { text: "Install Empathy Chip (To feel)", action: () => {
+        level1State.garyFixed = true;
+        level1State.garyAnimationState = 'wakingUp';
+        startDialogue("GARY", "I... understand. Thank you, Cadet. The Academy grounds are yours to explore. I shall be here if you need assistance.", [{ text: "Continue", action: () => {
+```
+
+NEW:
+```javascript
+startDialogue("GARY", "Language online. My thoughts have structure.", [{ text: "Continue", action: () => {
+    startDialogue("RATIO", "Present the final module.", [
+        { text: "Install Emotion Chip (To feel)", action: () => {
+            level1State.garyFixed = true;
+            level1State.garyAnimationState = 'wakingUp';
+            startDialogue("GARY", "I... understand. Thank you, friend. The Academy grounds are yours to explore. I shall be here if you need assistance.", [{ text: "Continue", action: () => {
+```
+
+KEY CHANGES:
+- GARY: "Logic online" → "Language online"
+- Added RATIO dialogue before final option
+- GARY: "Thank you, Cadet" → "Thank you, friend"
+
+---
+
+CHANGE 7.3: Update Missing Parts Prompt
+---------------------------------------
+LOCATION: handleGaryInteraction function, start (~Line 524)
+
+ORIGINAL:
+```javascript
+if (!level1State.inventory.cog || !level1State.inventory.loom || !level1State.inventory.chip) {
+    getRatioDialogue("The player is trying to fix GARY but doesn't have all the parts yet.");
+    return;
+}
+```
+
+NEW:
+```javascript
+if (!level1State.inventory.cog || !level1State.inventory.loom || !level1State.inventory.chip) {
+    getRatioDialogue("The player is trying to fix GARY but doesn't have all the parts yet. Tell them to find the parts first by looking around. Example: 'We need to find the parts first - look around the yard.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention specific locations like garages, bins, or toolboxes. Just say 'around here' or 'the yard' or 'the place'.");
+    return;
+}
+```
+
+IMPLEMENTATION NOTES:
+- Added strict, specific prompt with examples
+- Includes DO NOT rules to prevent inventing locations
+- Keeps response focused and accurate
+
+WHY: Prevents RATIO from inventing "Gear Garage" or "Scrap Bin" that don't exist.
+
+---
+
+CHANGE 7.4: Update Item Finding Feedback
+----------------------------------------
+LOCATION: Level1 item collection section (~Line 475)
+
+ORIGINAL:
+```javascript
+if (!gameState.level1State.inventory[id]) {
+    gameState.level1State.inventory[id] = true;
+    getRatioDialogue(`The user just found the ${nearbyObject.name}. Congratulate them and remind them how many parts are left to find.`);
+}
+```
+
+NEW:
+```javascript
+if (!gameState.level1State.inventory[id]) {
+    gameState.level1State.inventory[id] = true;
+    // Calculate how many parts are left
+    const totalParts = 3;
+    const collectedCount = (gameState.level1State.inventory.cog ? 1 : 0) +
+                           (gameState.level1State.inventory.loom ? 1 : 0) +
+                           (gameState.level1State.inventory.chip ? 1 : 0);
+    const partsLeft = totalParts - collectedCount;
+
+    // Build list of what's still needed
+    let missingParts = [];
+    if (!gameState.level1State.inventory.cog) missingParts.push('Brain Chip');
+    if (!gameState.level1State.inventory.loom) missingParts.push('Language Chip');
+    if (!gameState.level1State.inventory.chip) missingParts.push('Emotion Chip');
+
+    getRatioDialogue(`The user just found the ${nearbyObject.name}. Congratulate them. There are exactly ${partsLeft} parts left to find. ${partsLeft > 0 ? 'Still missing: ' + missingParts.join(', ') : 'All parts collected!'} Keep it super short, one sentence max.`);
+}
+```
+
+IMPLEMENTATION NOTES:
+- Calculates exact parts remaining
+- Lists specific missing parts by name
+- More informative feedback to player
+
+WHY: Clearer progress tracking, prevents vague AI responses.
+
+================================================================================
+SECTION 8: INVENTORY DISPLAY - UPDATE COMPONENT NAMES
+================================================================================
+
+CHANGE 8.1: Update Inventory Text
+---------------------------------
+LOCATION: Inventory rendering section (~Line 1250-1255 in render function)
+
+FIND:
+```javascript
+ctx.fillStyle = currentInventory.cog ? '#FFD700' : '#555';
+ctx.fillText("- Cognitive Cog", canvas.width - invWidth + 20, 105);
+ctx.fillStyle = currentInventory.loom ? '#00BFFF' : '#555';
+ctx.fillText("- Logic Loom", canvas.width - invWidth + 20, 135);
+ctx.fillStyle = currentInventory.chip ? '#FF69B4' : '#555';
+ctx.fillText("- Empathy Chip", canvas.width - invWidth + 20, 165);
+```
+
+REPLACE WITH:
+```javascript
+ctx.fillStyle = currentInventory.cog ? '#FFD700' : '#555';
+ctx.fillText("- Brain Chip", canvas.width - invWidth + 20, 105);
+ctx.fillStyle = currentInventory.loom ? '#00BFFF' : '#555';
+ctx.fillText("- Language Chip", canvas.width - invWidth + 20, 135);
+ctx.fillStyle = currentInventory.chip ? '#FF69B4' : '#555';
+ctx.fillText("- Emotion Chip", canvas.width - invWidth + 20, 165);
+```
+
+IMPLEMENTATION NOTES:
+- Visual inventory display now matches new component names
+- No logic changes, only display text
+
+WHY: Consistency with dialogue and game terminology.
+
+================================================================================
+SECTION 9: OBJECT DEFINITIONS - UPDATE NAMES
+================================================================================
+
+CHANGE 9.1: Update Level 1 Object Names
+---------------------------------------
+LOCATION: Level 1 objects array definition
+
+FIND objects with these names and update:
+- name: "Cognitive Cog" → "Brain Chip"
+- name: "Logic Loom" → "Language Chip"
+- name: "Empathy Chip" → "Emotion Chip"
+
+EXAMPLE:
+ORIGINAL:
+```javascript
+{ id: 'cog', name: 'Cognitive Cog', x: ..., y: ..., ... },
+{ id: 'loom', name: 'Logic Loom', x: ..., y: ..., ... },
+{ id: 'chip', name: 'Empathy Chip', x: ..., y: ..., ... },
+```
+
+NEW:
+```javascript
+{ id: 'cog', name: 'Brain Chip', x: ..., y: ..., ... },
+{ id: 'loom', name: 'Language Chip', x: ..., y: ..., ... },
+{ id: 'chip', name: 'Emotion Chip', x: ..., y: ..., ... },
+```
+
+IMPLEMENTATION NOTES:
+- Keep id values the same (cog, loom, chip)
+- Only change the display name property
+
+WHY: Consistent naming across all game systems.
+
+================================================================================
+SECTION 10: VERIFICATION CHECKLIST
+================================================================================
+
+After implementing all changes, verify:
+
+□ RATIO has TWO system prompts (tutorialSystemPrompt and level1SystemPrompt)
+□ getRatioDialogue selects prompt based on gameMode
+□ tutorialState has doorHintShown flag
+□ Door interaction shows "Press [E] to open the door"
+□ Door first interaction: Error → RATIO hint → Options
+□ Door subsequent interactions: Options directly
+□ Door options have no labels (just quoted commands)
+□ RATIO sync dialogue is casual/grumpy
+□ All component names are Brain/Language/Emotion (not Cognitive/Logic/Empathy)
+□ GARY uses "friend" not "Cadet"
+□ RATIO's strict prompts have examples and DO NOT rules
+□ Item finding calculates exact parts remaining
+□ GARY dialogue has RATIO speaking for some prompts
+□ Inventory display shows new component names
+
+================================================================================
+TESTING NOTES
+================================================================================
+
+Critical test paths:
+1. RATIO sync → refuse → walk away → return → sync (should work)
+2. Door interaction → error+hint → try again → should skip to options
+3. Door options → try wrong ones → RATIO gives hints
+4. Door → use persona command → opens
+5. Collect items → RATIO tells exact count remaining
+6. Try GARY early → RATIO says to find parts (no invented locations)
+7. Install GARY components in order → check speaker names (GARY vs RATIO)
+8. Complete GARY → final message says "friend" not "Cadet"
+
+================================================================================
+END OF IMPLEMENTATION GUIDE
+================================================================================
