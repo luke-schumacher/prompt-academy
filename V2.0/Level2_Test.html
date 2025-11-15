@@ -60,20 +60,11 @@
         <canvas id="game-canvas" width="800" height="800"></canvas>
     </div>
 
-    <!-- Background Music -->
-    <audio id="background-music" autoplay loop>
-        <source src="assets/audio/Pixel_Paradise_Start_Level1_2.mp3" type="audio/mpeg">
-    </audio>
-
     <script type="module">
         import Groq from "https://esm.sh/groq-sdk";
 
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
-
-        // Initialize background music with quiet volume
-        const backgroundMusic = document.getElementById('background-music');
-        backgroundMusic.volume = 0.25; // Set to 25% volume (fairly quiet)
 
         // --- API Configuration ---
         const API_KEY = "nope"; // <-- PASTE YOUR GROQ API KEY HERE

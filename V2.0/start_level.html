@@ -132,7 +132,7 @@
     <div id="save-feedback"></div>
 
     <!-- Background Music -->
-    <audio id="background-music" autoplay loop>
+    <audio id="background-music" loop>
         <source src="assets/audio/Pixel_Paradise_Start_Level1_2.mp3" type="audio/mpeg">
     </audio>
 
@@ -144,6 +144,13 @@
         // Initialize background music with quiet volume
         const backgroundMusic = document.getElementById('background-music');
         backgroundMusic.volume = 0.25; // Set to 25% volume (fairly quiet)
+
+        // Play music after user interaction (browser autoplay policy)
+        function startBackgroundMusic() {
+            backgroundMusic.play().catch(error => {
+                console.log('Audio playback failed:', error);
+            });
+        }
 
         // --- TUNABLE CONSTANTS ---
         const PLAYER_SPEED = 135; 
@@ -856,6 +863,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             if (gameState.gameMode !== 'startScreen') return;
             gameState.gameMode = 'transitionToTutorial';
             startButton.style.display = 'none';
+            startBackgroundMusic(); // Start music when game starts
         }
         
         function checkCollision(rectA, rectB) {
@@ -1645,7 +1653,13 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
         }
 
         function init() {
-            loadGame(); 
+            loadGame();
+
+            // Start music immediately if game is already loaded (not on start screen)
+            if (gameState.gameMode !== 'startScreen') {
+                startBackgroundMusic();
+            }
+
             createLeaves();
             
             // Level Boundaries - Defined here to ensure canvas.width and canvas.height are available
@@ -1719,7 +1733,10 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             document.getElementById('load-button').addEventListener('click', () => location.reload());
             document.getElementById('new-game-button').addEventListener('click', newGame);
             startButton.addEventListener('click', startGame);
-            
+
+            // Start music on any click (fallback)
+            document.addEventListener('click', startBackgroundMusic, { once: true });
+
             setInterval(saveGame, 180000);
             
             const assetsToLoad = [
