@@ -102,7 +102,7 @@
     <div id="save-feedback"></div>
 
     <!-- Background Music -->
-    <audio id="background-music" autoplay loop>
+    <audio id="background-music" loop>
         <source src="assets/audio/Pixel_Paradise_ecology.mp3" type="audio/mpeg">
     </audio>
 
@@ -113,6 +113,17 @@
         // Initialize background music with quiet volume
         const backgroundMusic = document.getElementById('background-music');
         backgroundMusic.volume = 0.25; // Set to 25% volume (fairly quiet)
+        let musicStarted = false;
+
+        // Play music after user interaction (browser autoplay policy)
+        function startBackgroundMusic() {
+            if (!musicStarted) {
+                backgroundMusic.play().catch(error => {
+                    console.log('Audio playback failed:', error);
+                });
+                musicStarted = true;
+            }
+        }
 
         // --- TUNABLE CONSTANTS ---
         const PLAYER_SPEED = 135;
@@ -731,6 +742,9 @@
         function handleKeyDown(e) {
             const { gameMode, activeDialogue, ecologyState } = gameState;
             const key = e.key.toLowerCase();
+
+            // Start music on first key press
+            startBackgroundMusic();
 
             if (activeDialogue.isActive) {
                 if (key === 'w' || key === 'arrowup') {
@@ -1723,9 +1737,21 @@
         function init() {
             loadGame();
 
-            document.getElementById('save-button').addEventListener('click', saveGame);
-            document.getElementById('load-button').addEventListener('click', () => location.reload());
-            document.getElementById('main-menu-button').addEventListener('click', mainMenu);
+            document.getElementById('save-button').addEventListener('click', () => {
+                startBackgroundMusic(); // Start music on click
+                saveGame();
+            });
+            document.getElementById('load-button').addEventListener('click', () => {
+                startBackgroundMusic(); // Start music on click
+                location.reload();
+            });
+            document.getElementById('main-menu-button').addEventListener('click', () => {
+                startBackgroundMusic(); // Start music on click
+                mainMenu();
+            });
+
+            // Start music on any click
+            document.addEventListener('click', startBackgroundMusic, { once: true });
 
             setInterval(saveGame, 180000);
 
