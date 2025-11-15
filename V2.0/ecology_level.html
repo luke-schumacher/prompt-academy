@@ -101,9 +101,18 @@
     </div>
     <div id="save-feedback"></div>
 
+    <!-- Background Music -->
+    <audio id="background-music" autoplay loop>
+        <source src="assets/audio/Pixel_Paradise_ecology.mp3" type="audio/mpeg">
+    </audio>
+
     <script type="module">
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
+
+        // Initialize background music with quiet volume
+        const backgroundMusic = document.getElementById('background-music');
+        backgroundMusic.volume = 0.25; // Set to 25% volume (fairly quiet)
 
         // --- TUNABLE CONSTANTS ---
         const PLAYER_SPEED = 135;
