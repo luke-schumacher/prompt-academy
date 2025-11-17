@@ -1246,7 +1246,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     const bounce = Math.sin(Date.now() * 0.002) * 5;
 
                     // Arrow positioned much further to the right of the door, pointing up-left towards it
-                    const arrowX = obj.x + obj.width + 220;
+                    const arrowX = obj.x + obj.width + 260;
                     const arrowY = obj.y + obj.height / 2 + bounce;
 
                     ctx.save();
@@ -1257,7 +1257,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
 
                     // Translate to arrow position and rotate to point upwards-left
                     ctx.translate(arrowX, arrowY);
-                    ctx.rotate(-0.35); // Rotate ~20 degrees upward
+                    ctx.rotate(0.30); // Rotate ~20 degrees upward
 
                     // Draw smaller arrow shape pointing left (rotation makes it point up-left)
                     ctx.beginPath();
