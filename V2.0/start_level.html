@@ -1245,8 +1245,8 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     const pulse = Math.abs(Math.sin(Date.now() * 0.0008));
                     const bounce = Math.sin(Date.now() * 0.002) * 5;
 
-                    // Arrow positioned far to the right of the door, pointing left towards it
-                    const arrowX = obj.x + obj.width + 100;
+                    // Arrow positioned much further to the right of the door, pointing up-left towards it
+                    const arrowX = obj.x + obj.width + 220;
                     const arrowY = obj.y + obj.height / 2 + bounce;
 
                     ctx.save();
@@ -1255,15 +1255,19 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     ctx.shadowColor = 'rgba(100, 220, 255, 1.0)';
                     ctx.shadowBlur = 15;
 
-                    // Draw smaller arrow shape pointing left towards the door
+                    // Translate to arrow position and rotate to point upwards-left
+                    ctx.translate(arrowX, arrowY);
+                    ctx.rotate(-0.35); // Rotate ~20 degrees upward
+
+                    // Draw smaller arrow shape pointing left (rotation makes it point up-left)
                     ctx.beginPath();
-                    ctx.moveTo(arrowX - 25, arrowY); // Tip pointing left
-                    ctx.lineTo(arrowX - 18, arrowY - 9); // Top wing
-                    ctx.lineTo(arrowX - 18, arrowY - 4);
-                    ctx.lineTo(arrowX, arrowY - 4); // Shaft top
-                    ctx.lineTo(arrowX, arrowY + 4); // Shaft bottom
-                    ctx.lineTo(arrowX - 18, arrowY + 4);
-                    ctx.lineTo(arrowX - 18, arrowY + 9); // Bottom wing
+                    ctx.moveTo(-25, 0); // Tip pointing left
+                    ctx.lineTo(-18, -9); // Top wing
+                    ctx.lineTo(-18, -4);
+                    ctx.lineTo(0, -4); // Shaft top
+                    ctx.lineTo(0, 4); // Shaft bottom
+                    ctx.lineTo(-18, 4);
+                    ctx.lineTo(-18, 9); // Bottom wing
                     ctx.closePath();
                     ctx.fill();
 
