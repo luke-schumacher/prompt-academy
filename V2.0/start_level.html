@@ -284,7 +284,7 @@
             { id: 'cog', name: 'Brain Chip', x: 350, y: 550, width: 20, height: 20 }, // Left side of courtyard
             { id: 'loom', name: 'Language Chip', x: 750, y: 700, width: 20, height: 20 }, // Center-bottom area
             { id: 'chip', name: 'Emotion Chip', x: 1100, y: 550, width: 20, height: 20 }, // Right side of courtyard
-            { id: 'biodome_door', name: 'Bio-Dome Entrance', x: 800, y: 550, width: 100, height: 150 } // Near empathy chip, invisible door
+            { id: 'biodome_door', name: 'Bio-Dome Entrance', x: 700, y: 560, width: 70, height: 100 } // Near empathy chip, subtle door
         ];
         
         const startScreenImage = new Image();
@@ -1236,6 +1236,20 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                          ctx.drawImage(itemImage, obj.x, obj.y, obj.width * 2.5, obj.height * 2.5);
                          ctx.globalAlpha = 1;
                     }
+                } else if (obj.id === 'biodome_door') {
+                    // Draw subtle visual clue for biodome door
+                    const pulse = Math.abs(Math.sin(Date.now() * 0.003));
+
+                    // Subtle shimmer outline
+                    ctx.strokeStyle = `rgba(80, 200, 232, ${0.15 + pulse * 0.15})`;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(obj.x, obj.y, obj.width, obj.height);
+                    ctx.setLineDash([]);
+
+                    // Very faint fill
+                    ctx.fillStyle = `rgba(80, 200, 232, ${0.05 + pulse * 0.05})`;
+                    ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
                 }
             });
 
