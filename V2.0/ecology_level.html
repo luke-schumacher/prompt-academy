@@ -125,6 +125,80 @@
             }
         }
 
+        // ============================================================================
+        // ANALYTICS MANAGER
+        // ============================================================================
+        const analytics = {
+            sessionId: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            sessionStart: Date.now(),
+            events: [],
+
+            // Core logging function
+            log(eventType, data = {}) {
+                const event = {
+                    timestamp: Date.now(),
+                    sessionId: this.sessionId,
+                    type: eventType,
+                    data: data
+                };
+
+                this.events.push(event);
+
+                // Send to Netlify immediately for important events
+                if (this.shouldSendImmediately(eventType)) {
+                    this.sendToNetlify(event);
+                }
+            },
+
+            shouldSendImmediately(type) {
+                // Send critical events right away
+                return ['level_complete', 'mistake', 'cooldown_trigger', 'session_end'].includes(type);
+            },
+
+            async sendToNetlify(event) {
+                try {
+                    await fetch('/.netlify/functions/log-analytics', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(event)
+                    });
+                } catch (error) {
+                    console.error('Analytics logging failed:', error);
+                    // Fail silently - don't break game
+                }
+            },
+
+            // Batch send on session end
+            async sendAll() {
+                if (this.events.length === 0) return;
+
+                try {
+                    await fetch('/.netlify/functions/log-analytics', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sessionId: this.sessionId,
+                            sessionStart: this.sessionStart,
+                            sessionEnd: Date.now(),
+                            totalEvents: this.events.length,
+                            events: this.events
+                        })
+                    });
+                } catch (error) {
+                    console.error('Batch analytics send failed:', error);
+                }
+            }
+        };
+
+        // Send analytics on page unload
+        window.addEventListener('beforeunload', () => {
+            analytics.log('session_end', {
+                duration: Date.now() - analytics.sessionStart,
+                totalEvents: analytics.events.length
+            });
+            analytics.sendAll();
+        });
+
         // --- TUNABLE CONSTANTS ---
         const PLAYER_SPEED = 135;
         const RATIO_SPEED = 110;
@@ -660,6 +734,11 @@
             ecologyState.visitedTerraVault = true;
             ecologyState.showSpeciesSelection = false;
 
+            // Analytics: Track Terra-Vault info read
+            analytics.log('terra_vault_info_read', {
+                timeElapsed: Date.now() - analytics.sessionStart
+            });
+
             startDialogue("Terra-Vault Database", "SPECIES: HOLO-BLOOM\nCLASS: TECHNO-ROSE\n\nThe Holo-Bloom has delicate petals. It is vulnerable to diseases and bugs. It needs SOIL to root in. It does NOT need water - only darkness to grow. Water will harm it.", [
                 { text: "Understood", action: () => {
                     ecologyState.holoBloomInfoRead = true; // Mark as read to hide the hologram
@@ -684,6 +763,15 @@
                 ecologyState.bioBotMood = 'happy';
                 ecologyState.showPromptInterface = false;
 
+                // Analytics: Track successful prompt submission
+                analytics.log('prompt_submit', {
+                    first: first,
+                    second: second,
+                    correct: true,
+                    mistakes: ecologyState.mistakes,
+                    timeElapsed: Date.now() - analytics.sessionStart
+                });
+
                 // Start germination animation
                 ecologyState.germinationState = 'germinating';
                 ecologyState.germinationFrame = 0;
@@ -694,10 +782,26 @@
                 ecologyState.bioBotMood = 'sad';
                 ecologyState.mistakes++;
 
+                // Analytics: Track incorrect prompt submission
+                analytics.log('prompt_submit', {
+                    first: first,
+                    second: second,
+                    correct: false,
+                    mistakes: ecologyState.mistakes,
+                    timeElapsed: Date.now() - analytics.sessionStart
+                });
+
                 if (ecologyState.mistakes >= 2) {
                     // Set 12-hour cooldown (in milliseconds)
                     const twelveHours = 12 * 60 * 60 * 1000;
                     ecologyState.cooldownUntil = Date.now() + twelveHours;
+
+                    // Analytics: Track cooldown trigger
+                    analytics.log('cooldown_trigger', {
+                        mistakes: ecologyState.mistakes,
+                        cooldownUntil: ecologyState.cooldownUntil,
+                        timeElapsed: Date.now() - analytics.sessionStart
+                    });
 
                     startDialogue("Bio-Bot", "TOO MANY ERRORS. SYSTEM LOCKOUT INITIATED. 12 HOUR COOLDOWN ACTIVE.", [
                         { text: "Oh no...", action: () => {
@@ -981,6 +1085,13 @@
                         ecologyState.germinationState = 'complete';
                         ecologyState.levelComplete = true;
                         ecologyState.completeMessageTimer = 5;
+
+                        // Analytics: Track Level 2 completion
+                        analytics.log('level_complete', {
+                            level: 2,
+                            totalTime: Date.now() - analytics.sessionStart,
+                            mistakes: ecologyState.mistakes
+                        });
 
                         // Show success dialogue
                         startDialogue("Bio-Bot", "HOLO-BLOOM SUCCESSFULLY GERMINATED. THANK YOU, CADET.", [
