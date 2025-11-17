@@ -653,7 +653,10 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                         handleGaryInteraction();
                     }
                 } else if (id === 'biodome_door') {
-                    if (gameState.level1State.levelComplete) {
+                    if (!gameState.level1State.garyFixed) {
+                        // Don't show any dialogue if Gary isn't fixed yet - door is hidden
+                        return;
+                    } else if (gameState.level1State.levelComplete) {
                         // Navigate to ecology level (works with both local and Netlify)
                         window.location.href = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                             ? 'ecology_level.html'
@@ -1004,9 +1007,10 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 const currentInteractables = gameMode === 'tutorial' ? tutorialInteractables : level1Interactables;
                 for (const obj of currentInteractables) {
                     if (gameMode === 'level1' && obj.id.match(/cog|loom|chip/) && level1State.inventory[obj.id]) continue;
-                    if (checkCollision(player, obj)) { 
-                        gameState.nearbyObject = obj; 
-                        break; 
+                    if (gameMode === 'level1' && obj.id === 'biodome_door' && !level1State.garyFixed) continue;
+                    if (checkCollision(player, obj)) {
+                        gameState.nearbyObject = obj;
+                        break;
                     }
                 }
                 if (tutorialState.controlsHintTimer > 0) tutorialState.controlsHintTimer -= deltaTime;
@@ -1241,25 +1245,25 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     const pulse = Math.abs(Math.sin(Date.now() * 0.0008));
                     const bounce = Math.sin(Date.now() * 0.002) * 5;
 
-                    // Arrow positioned to the right of the door, pointing left towards it
-                    const arrowX = obj.x + obj.width + 40;
+                    // Arrow positioned far to the right of the door, pointing left towards it
+                    const arrowX = obj.x + obj.width + 100;
                     const arrowY = obj.y + obj.height / 2 + bounce;
 
                     ctx.save();
-                    ctx.globalAlpha = 0.5 + pulse * 0.3;
-                    ctx.fillStyle = 'rgba(80, 200, 232, 0.9)';
-                    ctx.shadowColor = 'rgba(80, 200, 232, 0.8)';
-                    ctx.shadowBlur = 12;
+                    ctx.globalAlpha = 0.7 + pulse * 0.3;
+                    ctx.fillStyle = 'rgba(100, 220, 255, 1.0)';
+                    ctx.shadowColor = 'rgba(100, 220, 255, 1.0)';
+                    ctx.shadowBlur = 15;
 
-                    // Draw smaller arrow shape pointing left
+                    // Draw smaller arrow shape pointing left towards the door
                     ctx.beginPath();
-                    ctx.moveTo(arrowX, arrowY);
-                    ctx.lineTo(arrowX - 18, arrowY - 9);
+                    ctx.moveTo(arrowX - 25, arrowY); // Tip pointing left
+                    ctx.lineTo(arrowX - 18, arrowY - 9); // Top wing
                     ctx.lineTo(arrowX - 18, arrowY - 4);
-                    ctx.lineTo(arrowX - 25, arrowY - 4);
-                    ctx.lineTo(arrowX - 25, arrowY + 4);
+                    ctx.lineTo(arrowX, arrowY - 4); // Shaft top
+                    ctx.lineTo(arrowX, arrowY + 4); // Shaft bottom
                     ctx.lineTo(arrowX - 18, arrowY + 4);
-                    ctx.lineTo(arrowX - 18, arrowY + 9);
+                    ctx.lineTo(arrowX - 18, arrowY + 9); // Bottom wing
                     ctx.closePath();
                     ctx.fill();
 
