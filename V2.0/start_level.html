@@ -1238,28 +1238,28 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     }
                 } else if (obj.id === 'biodome_door' && level1State.garyFixed) {
                     // Draw mysterious arrow pointing to the door (only after Gary is fixed)
-                    const pulse = Math.abs(Math.sin(Date.now() * 0.002));
+                    const pulse = Math.abs(Math.sin(Date.now() * 0.0008));
                     const bounce = Math.sin(Date.now() * 0.002) * 5;
 
-                    // Arrow positioned to the left of the door, pointing right towards it
-                    const arrowX = obj.x - 60;
+                    // Arrow positioned to the right of the door, pointing left towards it
+                    const arrowX = obj.x + obj.width + 40;
                     const arrowY = obj.y + obj.height / 2 + bounce;
 
                     ctx.save();
-                    ctx.globalAlpha = 0.3 + pulse * 0.2;
-                    ctx.fillStyle = 'rgba(80, 200, 232, 0.8)';
-                    ctx.shadowColor = 'rgba(80, 200, 232, 0.6)';
-                    ctx.shadowBlur = 10;
+                    ctx.globalAlpha = 0.5 + pulse * 0.3;
+                    ctx.fillStyle = 'rgba(80, 200, 232, 0.9)';
+                    ctx.shadowColor = 'rgba(80, 200, 232, 0.8)';
+                    ctx.shadowBlur = 12;
 
-                    // Draw arrow shape pointing right
+                    // Draw smaller arrow shape pointing left
                     ctx.beginPath();
                     ctx.moveTo(arrowX, arrowY);
-                    ctx.lineTo(arrowX + 25, arrowY - 12);
-                    ctx.lineTo(arrowX + 25, arrowY - 5);
-                    ctx.lineTo(arrowX + 35, arrowY - 5);
-                    ctx.lineTo(arrowX + 35, arrowY + 5);
-                    ctx.lineTo(arrowX + 25, arrowY + 5);
-                    ctx.lineTo(arrowX + 25, arrowY + 12);
+                    ctx.lineTo(arrowX - 18, arrowY - 9);
+                    ctx.lineTo(arrowX - 18, arrowY - 4);
+                    ctx.lineTo(arrowX - 25, arrowY - 4);
+                    ctx.lineTo(arrowX - 25, arrowY + 4);
+                    ctx.lineTo(arrowX - 18, arrowY + 4);
+                    ctx.lineTo(arrowX - 18, arrowY + 9);
                     ctx.closePath();
                     ctx.fill();
 
