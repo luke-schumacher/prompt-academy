@@ -178,9 +178,7 @@
                             text: "'I order you to open!'", action: () => {
                                 startDialogue("Door", "*The door remains silent and unmoving.*", [ {
                                         text: "Continue", action: () => {
-                                            getRatioDialogue("The command failed. The door doesn't know what it is. Hint that it needs to be told
- what it is. Example: 'It doesn' t know what it is - try telling it directly.' OR SOMETHING VERY VERY SIMILAR. Keep it
- super short, one sentence max. DO NOT mention anything else unrelated to this.");
+                                            getRatioDialogue("The command failed. The door doesn't know what it is. Hint that it needs to be told what it is. Example: 'It doesn't know what it is - try telling it directly.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.");
 
                                             }
                                         }
@@ -194,12 +192,7 @@
                             text: "'Open the door please'", action: () => {
                                 startDialogue("Door", "*A silent hum.... no response.*", [ {
                                         text: "Continue", action: () => {
-                                            getRatioDialogue("The user tried being polite but the door still didn't respond. The door doesn't know
- it's a door.
- Hint that it needs to be told what it is and what to do. Example: 'Being nice won' t help if it doesn't
- know it's a
- door - tell it what it is.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO
- NOT mention anything else unrelated to this.");
+                                            getRatioDialogue("The user tried being polite but the door still didn't respond. The door doesn't know it's a door. Hint that it needs to be told what it is and what to do. Example: 'Being nice won't help if it doesn't know it's a door - tell it what it is.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.");
 
                                             }
                                         }
@@ -240,12 +233,8 @@
                 startDialogue("Door", "Error, command not understood.", [ {
                         text: "Continue", action: () => {
                             // RATIO immediately steps in with helpful hint
-                            getRatioDialogue("The door just gave an error. Explain that this door forgets what it is sometimes and
- doesn't know
- what to do. Tell the user to try telling the door what it's supposed to be and what it should do. Be
- clear and helpful. Example: 'This door forgets what it is sometimes - try telling it what it' s supposed to be.' OR
- SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.", () => {
- // Mark hint as shown and show options
+                            getRatioDialogue("The door just gave an error. Explain that this door forgets what it is sometimes and doesn't know what to do. Tell the user to try telling the door what it's supposed to be and what it should do. Be clear and helpful. Example: 'This door forgets what it is sometimes - try telling it what it's supposed to be.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.", () => {
+                                // Mark hint as shown and show options
                                 tutorialState.doorHintShown=true;
 
                                 gameState.activeDialogue.options=[ {
@@ -283,9 +272,7 @@
 
             else if (id==='broken_gary') {
                 if (gameState.level1State.garyFixed) {
-                    getGaryDialogue("The user is talking to you after you have been fixed. Thank them again and offer to
- help.");
-
+                    getGaryDialogue("The user is talking to you after you have been fixed. Thank them again and offer to help.");
                     }
 
                     else {
@@ -337,10 +324,8 @@
                     ,
                     {
                     text: "I'm… not really sure.", action: () => {
-                        getRatioDialogue("The user says they are not sure why they are here. Respond with a light, playful
- comment that's a
- bit grumpy but not mean. Keep it super short, one sentence max.", () => {
- tutorialState.ratioSyncStep=1;
+                        getRatioDialogue("The user says they are not sure why they are here. Respond with a light, playful comment that's a bit grumpy but not mean. Keep it super short, one sentence max.", () => {
+                            tutorialState.ratioSyncStep=1;
                             handleRatioSyncInteraction();
                         });
                 }
@@ -361,11 +346,7 @@
                         timeElapsed: Date.now() - analytics.sessionStart
                     });
 
-                getRatioDialogue("The user agreed to sync. Welcome them and point them toward the door. Hint that you
- cannot open it yourself. Example sentences you could use: 'Welcome to the mess. Let' s go, door's that way.' or 'All
- right then,
-                    here's the door. Give me a hand, will you? Obviously I don' t have one.' Keep it super short, one
- sentence max.");
+                getRatioDialogue("The user agreed to sync. Welcome them and point them toward the door. Hint that you cannot open it yourself. Example sentences you could use: 'Welcome to the mess. Let's go, door's that way.' or 'All right then, here's the door. Give me a hand, will you? Obviously I don't have one.' Keep it super short, one sentence max.");
 
                 }
             }
@@ -373,12 +354,7 @@
             ,
             {
             text: "Emmmm, no that sounds weird.", action: () => {
-                getRatioDialogue("The user is refusing to sync. Tell them there's nowhere else to go and nothing else to
- do - they need to sync. Use one of these examples or something VERY similar (don't change much): ' Well, there's
- nowhere else to go anyway.' or ' Suit yourself, but there's nothing else to do here.' or 'Your call, friend, but
- you're kind of
- stuck otherwise.' Keep it super short, one sentence max. Stick close to the examples.");
-
+                getRatioDialogue("The user is refusing to sync. Tell them there's nowhere else to go and nothing else to do - they need to sync. Use one of these examples or something VERY similar (don't change much): 'Well, there's nowhere else to go anyway.' or 'Suit yourself, but there's nothing else to do here.' or 'Your call, friend, but you're kind of stuck otherwise.' Keep it super short, one sentence max. Stick close to the examples.");
                     }
                 }
 
@@ -395,9 +371,8 @@
             =gameState;
 
             if ( !level1State.inventory.cog || !level1State.inventory.loom || !level1State.inventory.chip) {
-                getRatioDialogue("The player is trying to fix GARY but doesn't have all the parts yet. Tell them to find
- the parts first by looking around. Example: 'We need to find the parts first - look around the yard.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention specific locations like garages, bins, or toolboxes. Just say 'around here' or 'the yard' or 'the place' .");
- return;
+                getRatioDialogue("The player is trying to fix GARY but doesn't have all the parts yet. Tell them to find the parts first by looking around. Example: 'We need to find the parts first - look around the yard.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention specific locations like garages, bins, or toolboxes. Just say 'around here' or 'the yard' or 'the place'.");
+                return;
                 }
 
                 switch (level1State.garyDialogueStep) {
@@ -411,8 +386,10 @@
                         ,
                         {
                         text: "I want to pass to the next level.", action: () => {
-                            startDialogue("GARY", "Threat detected.
- Defensive protocols active. *BZZT*"); } },
+                            startDialogue("GARY", "Threat detected. Defensive protocols active. *BZZT*");
+                        }
+                    }
+                    ,
 ]);
                             break;
 
@@ -466,9 +443,8 @@
                                     ,
                                     {
                                     text: "Install Personality Chip (To feel)", action: () => {
-                                        startDialogue("GARY", "SEQUENCE ERROR. Emotion before logic invites overload. A thinking mind needs the
- structure of reason before it can process emotion.");
- level1State.garyDialogueStep=0;
+                                        startDialogue("GARY", "SEQUENCE ERROR. Emotion before logic invites overload. A thinking mind needs the structure of reason before it can process emotion.");
+                                        level1State.garyDialogueStep=0;
                                         }
                                     }
 
@@ -488,9 +464,8 @@
                                             level1State.arrowVisible=true;
                                             level1State.garyAnimationState='wakingUp';
 
-                                            startDialogue("GARY", "I... understand. Thank you, friend. The Academy grounds are yours to explore. I
- shall be here if you need assistance.", [{
- text: "Continue", action: () => {
+                                            startDialogue("GARY", "I... understand. Thank you, friend. The Academy grounds are yours to explore. I shall be here if you need assistance.", [{
+                                                text: "Continue", action: () => {
                                                     level1State.levelComplete=true;
                                                     level1State.completeMessageTimer=5;
 
@@ -711,9 +686,8 @@
 
             else if (gameMode==='tutorial' || gameMode==='level1') {
                 if ( !gameState.tutorialState.controlsExplained && gameMode==='tutorial') {
-                    startDialogue("Tutorial", "Use W/A/S/D keys to move your character. Press E to interact
- with objects and characters.", [
- {
+                    startDialogue("Tutorial", "Use W/A/S/D keys to move your character. Press E to interact with objects and characters.", [
+                        {
                             text: "Got it!", action: () => {
                                 gameState.tutorialState.controlsExplained=true;
                                 closeDialogue();
@@ -822,10 +796,13 @@
         }
 
         if (moved) {
-            //
-            tutorialState.controlsHintTimer=0; // This was removed previously } player.x=Math.max(0,
+            // tutorialState.controlsHintTimer=0; // This was removed previously
+        }
 
-            Math.min(canvas.width - player.width, player.x)); player.y=Math.max(0, Math.min(canvas.height - player.height, player.y)); if (ratio.synced) {
+        player.x=Math.max(0, Math.min(canvas.width - player.width, player.x));
+        player.y=Math.max(0, Math.min(canvas.height - player.height, player.y));
+
+        if (ratio.synced) {
             const dx=player.x - ratio.x; const dy=player.y - ratio.y; const distance=Math.sqrt(dx * dx + dy * dy); if (distance> ratio.followDistance) {
                 ratio.x +=(dx / distance) * ratio.speed * deltaTime; ratio.y +=(dy / distance) * ratio.speed * deltaTime;
             }
@@ -887,9 +864,9 @@
 
         function updateLeaves(deltaTime) {
             if (gameState.leaves.length < 150) {
-                // Ensure there are enough leaves createLeaves(150 -
-                gameState.leaves.length);
-        }
+                // Ensure there are enough leaves
+                createLeaves(150 - gameState.leaves.length);
+            }
 
         for (const leaf of gameState.leaves) {
             leaf.y +=leaf.speedY * 60 * deltaTime; leaf.x +=leaf.speedX * 60 * deltaTime; leaf.rotation +=leaf.rotationSpeed * 60 * deltaTime; if (leaf.y> canvas.height) {
@@ -1486,8 +1463,8 @@
                     // Calculate total width for centering the entire message
                     const totalWidth=text1Width + text2Width + text3Width;
 
-                    // Calculate the starting X for the first part so the whole message is
-                    centered let currentX=(canvas.width / 2) - (totalWidth / 2);
+                    // Calculate the starting X for the first part so the whole message is centered
+                    let currentX=(canvas.width / 2) - (totalWidth / 2);
 
                     // Draw each part with its specific color
                     ctx.fillStyle='#FFFFFF';
@@ -1532,9 +1509,9 @@
                 currentAdjustments=level1BoundaryAdjustments;
             }
 
-            ctx.fillStyle='rgba(255, 0, 0, 0.5)'; // Red, semi-transparent for
-
-            visibility currentBoundaries.forEach(boundary => {
+            // Red, semi-transparent for visibility
+            ctx.fillStyle='rgba(255, 0, 0, 0.5)';
+            currentBoundaries.forEach(boundary => {
                     let {
                         x, y, width, height
                     }
@@ -1654,10 +1631,10 @@
         function init() {
             loadGame();
 
-            // Start music immediately if game is already loaded (not on
-            start screen) if (gameState.gameMode !=='startScreen') {
-            startBackgroundMusic();
-        }
+            // Start music immediately if game is already loaded (not on start screen)
+            if (gameState.gameMode !=='startScreen') {
+                startBackgroundMusic();
+            }
 
         createLeaves();
 
