@@ -84,6 +84,26 @@
             transition: opacity 0.5s ease-in-out;
             pointer-events: none;
         }
+        #replay-button {
+            position: absolute;
+            bottom: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 20px 40px;
+            font-size: 28px;
+            font-family: 'Roboto Mono', monospace;
+            background-color: rgba(10, 25, 40, 0.8);
+            color: #00FFFF;
+            border: 2px solid #00FFFF;
+            border-radius: 15px;
+            cursor: pointer;
+            display: none; /* Hidden by default */
+            z-index: 100;
+        }
+        #replay-button:hover {
+            background-color: rgba(20, 50, 80, 0.9);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -92,6 +112,7 @@
         <div class="game-console-body">
             <div id="canvas-header">BIO-DOME - ECOLOGY SCHOOL</div>
             <canvas id="game-canvas" width="1536" height="1024"></canvas>
+            <button id="replay-button">REPLAY LEVEL</button>
             <div id="game-controls">
                 <button id="save-button" class="control-button">Save Game</button>
                 <button id="load-button" class="control-button">Load Last Save</button>
@@ -273,7 +294,7 @@
 
         // Interactables for Bio-Dome main room
         const bioDomeInteractables = [
-            { id: 'biobot', name: 'Bio-Bot', x: 650, y: 604, width: 180, height: 180 }, // Moved to the right
+            { id: 'biobot', name: 'Bio-Bot', x: 650, y: 540, width: 180, height: 180 }, // Moved UP to avoid text overlap
             { id: 'ratio', name: 'Ratio (Guide)', x: 0, y: 0, width: 120, height: 120 }, // Dynamic position, generous hitbox
             { id: 'door_exit', name: 'Exit to Academy', x: 700, y: 50, width: 150, height: 200 },
         ];
@@ -307,6 +328,7 @@
         const holoBloomInfoImage = new Image();
         const eggImage = new Image();
         const eggGerminationImage = new Image();
+        const endgameImage = new Image();
 
         bioDomeImage.src = 'assets/level1_ecology/ecology_background.png';
         workbenchImage.src = 'assets/level1_ecology/workbench_background.png';
@@ -322,6 +344,7 @@
         holoBloomInfoImage.src = 'assets/level1_ecology/holobloom_terravault.png';
         eggImage.src = 'assets/level1_ecology/egg.png';
         eggGerminationImage.src = 'assets/level1_ecology/egg_germination.png';
+        endgameImage.src = 'ui/endgame_background.png';
 
         const ratioPersona = {
             systemPrompt: `You are Ratio, a cantankerous but wise guide at the Prompt Academy's Bio-Dome. You're introducing a student to the ecology school where Bio-Bots care for modified plant species. You can be sarcastic and critical when students make mistakes, but you ultimately want them to learn. Keep responses to 1-2 short sentences. You have a particular soft spot for the Bio-Bots and get annoyed when students upset them.`
@@ -855,7 +878,7 @@
                     activeDialogue.selectedOption = (activeDialogue.selectedOption - 1 + activeDialogue.options.length) % activeDialogue.options.length;
                 } else if (key === 's' || key === 'arrowdown') {
                     activeDialogue.selectedOption = (activeDialogue.selectedOption + 1) % activeDialogue.options.length;
-                } else if (key === 'e' || key === 'enter') {
+                } else if (key === 'e') {
                     if (activeDialogue.charIndex < activeDialogue.text.length) {
                         activeDialogue.charIndex = activeDialogue.text.length;
                     } else if (activeDialogue.options.length > 0) {
@@ -875,7 +898,7 @@
                 } else if (key === 's' || key === 'arrowdown') {
                     ecologyState.speciesSelectionIndex = (ecologyState.speciesSelectionIndex + 1) % speciesDatabase.length;
                     return;
-                } else if (key === 'e' || key === 'enter') {
+                } else if (key === 'e') {
                     const selectedSpecies = speciesDatabase[ecologyState.speciesSelectionIndex];
                     if (selectedSpecies.available) {
                         showHoloBloomInfo();
@@ -896,7 +919,7 @@
                 } else if (key === 'd' || key === 'arrowright') {
                     cycleWordSelection(1);
                     return;
-                } else if (key === 'e' || key === 'enter') {
+                } else if (key === 'e') {
                     if (ecologyState.currentSelection === 'submit') {
                         submitPrompt();
                     } else {
@@ -1096,10 +1119,15 @@
                         // Show success dialogue
                         startDialogue("Bio-Bot", "HOLO-BLOOM SUCCESSFULLY GERMINATED. THANK YOU, CADET.", [
                             { text: "Continue", action: () => {
-                                startDialogue("Ratio", "Well, well. You actually did it. I'm... mildly impressed. You can now exit through the door when ready.", [
+                                startDialogue("Ratio", "Well, well. You actually did it. I'm... mildly impressed.", [
                                     { text: "Great!", action: () => {
                                         saveGame();
                                         closeDialogue();
+                                        // Switch to End Screen
+                                        gameState.gameMode = 'endScreen';
+                                        // Show Replay Button
+                                        const replayBtn = document.getElementById('replay-button');
+                                        if (replayBtn) replayBtn.style.display = 'block';
                                     }}
                                 ]);
                             }}
@@ -1111,6 +1139,11 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            ctx.translate(canvas.width * 0.05, canvas.height * 0.05);
+            ctx.scale(0.9, 0.9);
+
             const { gameMode } = gameState;
 
             if (gameMode === 'bioDomeMain') {
@@ -1119,11 +1152,17 @@
                 drawWorkbench();
             } else if (gameMode === 'terraVault') {
                 drawTerraVault();
+            } else if (gameMode === 'endScreen') {
+                if (endgameImage.complete) ctx.drawImage(endgameImage, 0, 0, canvas.width, canvas.height);
             }
 
-            drawProgressionBar();
-            drawHud();
-            if (gameState.activeDialogue.isActive) drawDialogueBox();
+            if (gameMode !== 'endScreen') {
+                drawProgressionBar();
+                drawHud();
+                if (gameState.activeDialogue.isActive) drawDialogueBox();
+            }
+            
+            ctx.restore();
         }
 
         function drawProgressionBar() {
@@ -1386,6 +1425,35 @@
                 ctx.drawImage(holoBloomInfoImage, centerX - imgWidth / 2, centerY - imgHeight / 2, imgWidth, imgHeight);
                 ctx.globalAlpha = 1.0;
                 ctx.shadowBlur = 0;
+            }
+
+            // Draw static down-arrow for exit
+            const exitObj = terraVaultInteractables.find(o => o.id === 'exit_vault');
+            if (exitObj) {
+                const arrowX = exitObj.x + exitObj.width / 2;
+                const arrowY = exitObj.y - 40;
+                
+                ctx.save();
+                ctx.translate(arrowX, arrowY);
+                ctx.scale(2, 2); // Enlarge
+                
+                ctx.fillStyle = 'rgba(100, 255, 255, 0.8)';
+                ctx.shadowColor = '#00FFFF';
+                ctx.shadowBlur = 10;
+                
+                // Down arrow shape
+                ctx.beginPath();
+                ctx.moveTo(0, 10);
+                ctx.lineTo(-10, -5); // Wing left
+                ctx.lineTo(-4, -5);
+                ctx.lineTo(-4, -15); // Shaft top
+                ctx.lineTo(4, -15); // Shaft bottom
+                ctx.lineTo(4, -5);
+                ctx.lineTo(10, -5); // Wing right
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
             }
 
             drawPlayerAndRatio();
@@ -1687,7 +1755,13 @@
                 if (gameState.nearbyObject) {
                     const textPart1 = "Press ";
                     const textPart2 = "[E]";
-                    const textPart3 = ` to interact with ${gameState.nearbyObject.name}`;
+                    
+                    let textPart3 = ` to interact with ${gameState.nearbyObject.name}`;
+                    if (gameState.nearbyObject.id === 'exit_vault') {
+                        textPart3 = ` to return to workbench`;
+                    } else if (gameState.nearbyObject.id === 'door_exit' || gameState.nearbyObject.id === 'exit_door') {
+                        textPart3 = ` to exit`; // Optional clean up for other doors
+                    }
 
                     const originalTextAlign = ctx.textAlign;
                     ctx.textAlign = 'left';
@@ -1878,7 +1952,7 @@
             const assetsToLoad = [
                 bioDomeImage, workbenchImage, terraVaultImage, playerImage, ratioImageL, ratioImageR,
                 bioBotIdleStandingImage, bioBotIdleAnimationImage, bioBotHappyImage, bioBotHeadImage, bioBotSadImage, holoBloomInfoImage,
-                eggImage, eggGerminationImage
+                eggImage, eggGerminationImage, endgameImage
             ];
             let loadedCount = 0;
             const totalAssets = assetsToLoad.length;
