@@ -5,7 +5,9 @@
       "Bash(dir /s /b *.html)",
       "Bash(node:*)",
       "Bash(grep:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(git -C \"C:\\Users\\lukis\\Documents\\GitHub\\ai-behavior-lab\" log --oneline -10 -- \"V2.0/start_level.html\")",
+      "Bash(git -C \"C:\\Users\\lukis\\Documents\\GitHub\\ai-behavior-lab\" show 630434a:V2.0/start_level.html)"
     ],
     "deny": [],
     "ask": []
