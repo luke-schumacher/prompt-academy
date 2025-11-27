@@ -344,7 +344,7 @@
         holoBloomInfoImage.src = 'assets/level1_ecology/holobloom_terravault.png';
         eggImage.src = 'assets/level1_ecology/egg.png';
         eggGerminationImage.src = 'assets/level1_ecology/egg_germination.png';
-        endgameImage.src = 'ui/endgame_background.png';
+        endgameImage.src = 'assets/ui/endgame_background.png';
 
         const ratioPersona = {
             systemPrompt: `You are Ratio, a cantankerous but wise guide at the Prompt Academy's Bio-Dome. You're introducing a student to the ecology school where Bio-Bots care for modified plant species. You can be sarcastic and critical when students make mistakes, but you ultimately want them to learn. Keep responses to 1-2 short sentences. You have a particular soft spot for the Bio-Bots and get annoyed when students upset them.`
@@ -1442,7 +1442,7 @@
                 
                 ctx.save();
                 ctx.translate(arrowX, arrowY);
-                ctx.scale(2, 2); // Enlarge
+                ctx.scale(1.5, 1.5); // Smaller scale (was 2, 2)
                 
                 ctx.fillStyle = 'rgba(100, 255, 255, 0.8)';
                 ctx.shadowColor = '#00FFFF';
@@ -1886,7 +1886,9 @@
                             ctx.shadowColor = '#FFD700';
                             ctx.shadowBlur = 8;
                         }
-                        ctx.fillText(`${index === activeDialogue.selectedOption ? '▶ ' : '  '}${option.text}`, 50, canvas.height - boxHeight + 135 + (index * 30));
+                        // Add [E] to the selected option
+                        const prefix = index === activeDialogue.selectedOption ? '[E] ▶ ' : '      ';
+                        ctx.fillText(`${prefix}${option.text}`, 50, canvas.height - boxHeight + 135 + (index * 30));
                         ctx.shadowBlur = 4;
                     });
                 } else {
