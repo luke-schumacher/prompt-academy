@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prompt Academy</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Press+Start+2P&display=swap"
+        rel="stylesheet">
     <script type="module">
         // This script is intentionally left blank.
         // The API key has been moved to a secure serverless function.
@@ -23,9 +25,11 @@
             font-family: 'Roboto Mono', monospace;
             overflow: hidden;
         }
+
         .game-container {
             position: relative;
         }
+
         .game-console-body {
             background: linear-gradient(145deg, #3c3c3c, #1e1e1e);
             border-radius: 30px;
@@ -35,10 +39,13 @@
             gap: 1rem;
             align-items: center;
             border: 2px solid #111;
-            width: 100%;
+            width: auto;
+            max-width: 100%;
+            max-height: 90vh;
             aspect-ratio: 1536 / 1024;
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 10px 30px rgba(0,10px,30px,0.5);
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.7), 0 10px 30px rgba(0, 10px, 30px, 0.5);
         }
+
         #canvas-header {
             color: #aaa;
             font-size: 1.2rem;
@@ -46,6 +53,7 @@
             letter-spacing: 2px;
             text-transform: uppercase;
         }
+
         #game-canvas {
             border: 2px solid #4a4a4a;
             border-radius: 8px;
@@ -55,11 +63,13 @@
             aspect-ratio: 1536 / 1024;
             background-color: #000;
         }
+
         #game-controls {
             display: flex;
             gap: 1rem;
             margin-top: 0.5rem;
         }
+
         .control-button {
             background-color: #333;
             border: 1px solid #555;
@@ -70,10 +80,12 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
+
         .control-button:hover {
             background-color: #444;
             border-color: #777;
         }
+
         #start-button {
             position: absolute;
             bottom: 15%;
@@ -93,12 +105,14 @@
             display: block;
             letter-spacing: 2px;
         }
+
         #start-button:hover {
             background-color: rgba(20, 40, 60, 0.9);
             color: #ffffff;
             box-shadow: 0 0 25px rgba(80, 200, 232, 0.8), inset 0 0 15px rgba(80, 200, 232, 0.5);
             text-shadow: 0 0 12px #a0e9ff;
         }
+
         #save-feedback {
             position: absolute;
             top: 20px;
@@ -115,6 +129,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <div class="game-container">
@@ -128,6 +143,16 @@
             </div>
         </div>
         <button id="start-button">START</button>
+        <!-- Intro Popup -->
+        <div id="intro-popup"
+            style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; height: 400px; background: url('assets/ui/intro_popup_bg.png') no-repeat center center; background-size: contain; color: #fff; padding: 40px; text-align: center; font-family: 'Roboto Mono', monospace; z-index: 1000;">
+            <h2 style="color: #00ffff; margin-bottom: 20px;">WELCOME TO PROMPT ACADEMY</h2>
+            <p style="font-size: 18px; line-height: 1.6; margin-bottom: 40px;">
+                In a world where AI Assistants shape reality, you must learn to communicate with them effectively.
+                Master the art of Prompt Engineering to unlock the secrets of the Academy.
+            </p>
+            <p style="font-size: 24px; color: #ffff00; font-weight: bold;">PRESS [E] TO BEGIN</p>
+        </div>
     </div>
     <div id="save-feedback"></div>
 
@@ -232,11 +257,11 @@
         const DOOR_SCALE_FACTOR = 1.5; // Adjust this to make the door bigger or smaller (e.g., 1.2 is 20% bigger)
         const GARY_IDLE_FPS = 3; // Higher number = slower animation
 
-        const PLAYER_DISPLAY_WIDTH = 60; 
-        const PLAYER_DISPLAY_HEIGHT = 88; 
-        const RATIO_DISPLAY_WIDTH = 42; 
+        const PLAYER_DISPLAY_WIDTH = 60;
+        const PLAYER_DISPLAY_HEIGHT = 88;
+        const RATIO_DISPLAY_WIDTH = 42;
         const RATIO_DISPLAY_HEIGHT = 44;
-        const GROUNDSKEEPER_DISPLAY_WIDTH = 60; 
+        const GROUNDSKEEPER_DISPLAY_WIDTH = 60;
         const GROUNDSKEEPER_DISPLAY_HEIGHT = 78;
 
         let gameState = {
@@ -244,13 +269,13 @@
             transitionAlpha: 0,
             isAiThinking: false,
             leaves: [],
-            player: { 
+            player: {
                 x: 750, y: 800, spriteWidth: 164, spriteHeight: 243,
                 width: PLAYER_DISPLAY_WIDTH, height: PLAYER_DISPLAY_HEIGHT,
-                frameX: 0, frameY: 0, speed: PLAYER_SPEED, moving: false 
+                frameX: 0, frameY: 0, speed: PLAYER_SPEED, moving: false
             },
-            ratio: { 
-                x: 0, y: 0, width: RATIO_DISPLAY_WIDTH, height: RATIO_DISPLAY_HEIGHT, 
+            ratio: {
+                x: 0, y: 0, width: RATIO_DISPLAY_WIDTH, height: RATIO_DISPLAY_HEIGHT,
                 speed: RATIO_SPEED, followDistance: 90, direction: 'right', synced: false
             },
             keys: { w: false, a: false, s: false, d: false },
@@ -308,40 +333,40 @@
                 tutorial_wall_bottom: { adjustX: 0, adjustY: 100, adjustWidth: 0, adjustHeight: 0 }
             },
             level1BoundaryAdjustments: {
-            // Walls
-            'wall_top': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'wall_left_top': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'wall_left_main': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'wall_right_top': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'wall_right_main': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'wall_bottom': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                // Walls
+                'wall_top': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'wall_left_top': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'wall_left_main': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'wall_right_top': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'wall_right_main': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'wall_bottom': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
 
-            // Buildings
-            'building_left': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'building_center': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'building_right': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                // Buildings
+                'building_left': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'building_center': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'building_right': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
 
-            // Top Trees
-            'tree_top_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'tree_top_2': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'tree_top_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'tree_top_4': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'tree_top_5': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                // Top Trees
+                'tree_top_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'tree_top_2': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'tree_top_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'tree_top_4': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'tree_top_5': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
 
-            // Left Trees
-            'tree_left_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'tree_left_2': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            'tree_left_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                // Left Trees
+                'tree_left_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'tree_left_2': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                'tree_left_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
 
-            // Right Trees
-            'tree_right_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            // 'tree_right_2' was removed to open path to bot
-            'tree_right_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                // Right Trees
+                'tree_right_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                // 'tree_right_2' was removed to open path to bot
+                'tree_right_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
 
-            // Bottom Trees
-            'tree_bottom_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
-            // 'tree_bottom_2' was removed for spawn area
-            'tree_bottom_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                // Bottom Trees
+                'tree_bottom_1': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
+                // 'tree_bottom_2' was removed for spawn area
+                'tree_bottom_3': { adjustX: 0, adjustY: 0, adjustWidth: 0, adjustHeight: 0 },
             }
         };
 
@@ -352,7 +377,7 @@
             { id: 'ratio_start', name: 'Ratio', x: 750, y: 700, width: 35, height: 37 },
             { id: 'door', name: 'Academy Entrance', x: (1536 / 2) - (DOOR_BASE_WIDTH / 2), y: -700, width: DOOR_BASE_WIDTH, height: DOOR_BASE_HEIGHT },
         ];
-        
+
         const level1Interactables = [
             { id: 'broken_gary', name: 'Deactivated GARY', x: 1380, y: 450, width: 60, height: 78 },
             { id: 'cog', name: 'Brain Chip', x: 350, y: 550, width: 20, height: 20 }, // Left side of courtyard
@@ -360,7 +385,7 @@
             { id: 'chip', name: 'Emotion Chip', x: 1100, y: 550, width: 20, height: 20 }, // Right side of courtyard
             { id: 'biodome_door', name: 'Bio-Dome Entrance', x: 700, y: 560, width: 70, height: 100 } // Near empathy chip, subtle door
         ];
-        
+
         const startScreenImage = new Image();
         const level1MapImage = new Image();
         const playerImage = new Image();
@@ -376,11 +401,11 @@
         const doorOpenImage = new Image();
         const doorClosedImage = new Image();
         const snowflakeImage = new Image();
-        
+
         startScreenImage.src = 'assets/start/start_background.png';
         level1MapImage.src = 'assets/start/level_1_background.png';
         playerImage.src = 'assets/start/walking_character_Finn.png';
-        ratioImageR.src = 'assets/start/Ratio_R.png'; 
+        ratioImageR.src = 'assets/start/Ratio_R.png';
         ratioImageL.src = 'assets/start/Ratio_L.png';
         brokenGaryImage.src = 'assets/start/deactivated_gary.png';
         garyWakeUpImage.src = 'assets/start/GARY_Wake_Up_Sitting.png';
@@ -392,7 +417,7 @@
         doorOpenImage.src = 'assets/start/door_open.png';
         doorClosedImage.src = 'assets/start/door_closed.png';
         snowflakeImage.src = 'assets/start/snowflake.png';
-        
+
         const ratioPersona = {
             tutorialSystemPrompt: `You are Ratio, an old, wise, and grumpy guide. You are leading a new student through their first trial at the Prompt Academy. You are calling them on a journey, but pretending that you did not need them to be there.
 
@@ -436,7 +461,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 description: 'Feel the emotional resonance...'
             }
         };
-        
+
         function saveGame() {
             try {
                 localStorage.setItem('meMyselfAiSave_v5', JSON.stringify(gameState));
@@ -481,7 +506,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 localStorage.removeItem('meMyselfAiSave_v5');
             }
         }
-        
+
         function showSaveFeedback(message) {
             const feedbackElement = document.getElementById('save-feedback');
             if (!feedbackElement) return;
@@ -569,8 +594,8 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 // Calculate how many parts are left
                 const totalParts = 3;
                 const collectedCount = (level1State.inventory.cog ? 1 : 0) +
-                                       (level1State.inventory.loom ? 1 : 0) +
-                                       (level1State.inventory.chip ? 1 : 0);
+                    (level1State.inventory.loom ? 1 : 0) +
+                    (level1State.inventory.chip ? 1 : 0);
                 const partsLeft = totalParts - collectedCount;
 
                 // Build list of what's still needed
@@ -609,7 +634,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        "messages": [ { role: "system", content: systemPrompt }, ...currentDialogueHistory ],
+                        "messages": [{ role: "system", content: systemPrompt }, ...currentDialogueHistory],
                         "model": "llama-3.1-8b-instant"
                     })
                 });
@@ -620,7 +645,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
 
                 const data = await response.json();
                 const fullResponse = data.choices[0]?.message?.content || "";
-                
+
                 // Since we are not streaming, we can't update the text progressively.
                 // We will just set the full response at once.
                 gameState.activeDialogue.text = fullResponse;
@@ -653,7 +678,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        "messages": [ { role: "system", content: garyPersona.systemPrompt }, ...currentDialogueHistory ],
+                        "messages": [{ role: "system", content: garyPersona.systemPrompt }, ...currentDialogueHistory],
                         "model": "llama-3.1-8b-instant"
                     })
                 });
@@ -681,7 +706,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 gameState.isAiThinking = false;
             }
         }
-        
+
         function handleInteraction() {
             const { nearbyObject, activeDialogue, tutorialState } = gameState;
             if (!nearbyObject || activeDialogue.isActive) return;
@@ -695,45 +720,57 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     // Function to show door command options
                     const showDoorOptions = () => {
                         startDialogue("Door", "Pick a command:", [
-                            { text: "'I order you to open!'", action: () => {
-                                startDialogue("Door", "*The door remains silent and unmoving.*", [{ text: "Continue", action: () => {
-                                    getRatioDialogue("The command failed. The door doesn't know what it is. Hint that it needs to be told what it is. Example: 'It doesn't know what it is - try telling it directly.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.");
-                                } }]);
-                            }},
-                            { text: "'Open the door please'", action: () => {
-                                startDialogue("Door", "*A silent hum.... no response.*", [{ text: "Continue", action: () => {
-                                    getRatioDialogue("The user tried being polite but the door still didn't respond. The door doesn't know it's a door. Hint that it needs to be told what it is and what to do. Example: 'Being nice won't help if it doesn't know it's a door - tell it what it is.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.");
-                                } }]);
-                            }},
-                            { text: "'Act like a door, you are unlocked, now open!'", action: () => {
-                                tutorialState.doorOpen = true;
+                            {
+                                text: "'I order you to open!'", action: () => {
+                                    startDialogue("Door", "*The door remains silent and unmoving.*", [{
+                                        text: "Continue", action: () => {
+                                            getRatioDialogue("The command failed. The door doesn't know what it is. Hint that it needs to be told what it is. Example: 'It doesn't know what it is - try telling it directly.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.");
+                                        }
+                                    }]);
+                                }
+                            },
+                            {
+                                text: "'Open the door please'", action: () => {
+                                    startDialogue("Door", "*A silent hum.... no response.*", [{
+                                        text: "Continue", action: () => {
+                                            getRatioDialogue("The user tried being polite but the door still didn't respond. The door doesn't know it's a door. Hint that it needs to be told what it is and what to do. Example: 'Being nice won't help if it doesn't know it's a door - tell it what it is.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.");
+                                        }
+                                    }]);
+                                }
+                            },
+                            {
+                                text: "'Act like a door, you are unlocked, now open!'", action: () => {
+                                    tutorialState.doorOpen = true;
 
-                                // Analytics: Track door opened
-                                analytics.log('door_opened', {
-                                    timeElapsed: Date.now() - analytics.sessionStart,
-                                    hintShown: tutorialState.doorHintShown
-                                });
+                                    // Analytics: Track door opened
+                                    analytics.log('door_opened', {
+                                        timeElapsed: Date.now() - analytics.sessionStart,
+                                        hintShown: tutorialState.doorHintShown
+                                    });
 
-                                startDialogue("Door", "*With a deep groan, the door swings open.*", [{ text: "Enter", action: closeDialogue }]);
-                                tutorialState.step = 4;
-                                saveGame();
-                            }},
+                                    startDialogue("Door", "*With a deep groan, the door swings open.*", [{ text: "Enter", action: closeDialogue }]);
+                                    tutorialState.step = 4;
+                                    saveGame();
+                                }
+                            },
                         ]);
                     };
 
                     // First time: Show error and RATIO's hint
                     if (!tutorialState.doorHintShown) {
                         startDialogue("Door", "Error, command not understood.", [
-                            { text: "Continue", action: () => {
-                                // RATIO immediately steps in with helpful hint
-                                getRatioDialogue("The door just gave an error. Explain that this door forgets what it is sometimes and doesn't know what to do. Tell the user to try telling the door what it's supposed to be and what it should do. Be clear and helpful. Example: 'This door forgets what it is sometimes - try telling it what it's supposed to be.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.", () => {
-                                    // Mark hint as shown and show options
-                                    tutorialState.doorHintShown = true;
-                                    gameState.activeDialogue.options = [
-                                        { text: "Continue", action: showDoorOptions }
-                                    ];
-                                });
-                            }}
+                            {
+                                text: "Continue", action: () => {
+                                    // RATIO immediately steps in with helpful hint
+                                    getRatioDialogue("The door just gave an error. Explain that this door forgets what it is sometimes and doesn't know what to do. Tell the user to try telling the door what it's supposed to be and what it should do. Be clear and helpful. Example: 'This door forgets what it is sometimes - try telling it what it's supposed to be.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention anything else unrelated to this.", () => {
+                                        // Mark hint as shown and show options
+                                        tutorialState.doorHintShown = true;
+                                        gameState.activeDialogue.options = [
+                                            { text: "Continue", action: showDoorOptions }
+                                        ];
+                                    });
+                                }
+                            }
                         ]);
                     } else {
                         // Subsequent times: Go directly to options
@@ -745,7 +782,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 }
 
             } else if (gameState.gameMode === 'level1') {
-                 if (id === 'cog' || id === 'loom' || id === 'chip') {
+                if (id === 'cog' || id === 'loom' || id === 'chip') {
                     if (!gameState.level1State.inventory[id]) {
                         // Start resonance tuning mini-game
                         startResonanceTuning(id);
@@ -773,42 +810,50 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 }
             }
         }
-        
+
         function handleRatioSyncInteraction() {
             const { tutorialState } = gameState;
-            switch(tutorialState.ratioSyncStep) {
+            switch (tutorialState.ratioSyncStep) {
                 case 0:
                     startDialogue("Ratio", "Wait…. Who the hell are you? What are you doing here?", [
-                        { text: "I am just a human…", action: () => {
-                            tutorialState.ratioSyncStep = 1;
-                            handleRatioSyncInteraction();
-                        }},
-                        { text: "I'm… not really sure.", action: () => {
-                            getRatioDialogue("The user says they are not sure why they are here. Respond with a light, playful comment that's a bit grumpy but not mean. Keep it super short, one sentence max.", () => {
+                        {
+                            text: "I am just a human…", action: () => {
                                 tutorialState.ratioSyncStep = 1;
                                 handleRatioSyncInteraction();
-                            });
-                        }}
+                            }
+                        },
+                        {
+                            text: "I'm… not really sure.", action: () => {
+                                getRatioDialogue("The user says they are not sure why they are here. Respond with a light, playful comment that's a bit grumpy but not mean. Keep it super short, one sentence max.", () => {
+                                    tutorialState.ratioSyncStep = 1;
+                                    handleRatioSyncInteraction();
+                                });
+                            }
+                        }
                     ]);
                     break;
                 case 1:
                     startDialogue("Ratio", "Nevermind... I was about to head inside. Sync with me if you want to come.", [
-                        { text: "Okay, let's sync.", action: () => {
-                            gameState.ratio.synced = true;
-                            tutorialState.step = 3;
-                            gameState.ratio.x = gameState.player.x - 50;
-                            gameState.ratio.y = gameState.player.y;
+                        {
+                            text: "Okay, let's sync.", action: () => {
+                                gameState.ratio.synced = true;
+                                tutorialState.step = 3;
+                                gameState.ratio.x = gameState.player.x - 50;
+                                gameState.ratio.y = gameState.player.y;
 
-                            // Analytics: Track Ratio sync
-                            analytics.log('ratio_synced', {
-                                timeElapsed: Date.now() - analytics.sessionStart
-                            });
+                                // Analytics: Track Ratio sync
+                                analytics.log('ratio_synced', {
+                                    timeElapsed: Date.now() - analytics.sessionStart
+                                });
 
-                            getRatioDialogue("The user agreed to sync. Welcome them and point them toward the door. Hint that you cannot open it yourself. Example sentences you could use: 'Welcome to the mess. Let's go, door's that way.' or 'All right then, here's the door. Give me a hand, will you? Obviously I don't have one.' Keep it super short, one sentence max.");
-                        }},
-                        { text: "Emmmm, no that sounds weird.", action: () => {
-                            getRatioDialogue("The user is refusing to sync. Tell them there's nowhere else to go and nothing else to do - they need to sync. Use one of these examples or something VERY similar (don't change much): 'Well, there's nowhere else to go anyway.' or 'Suit yourself, but there's nothing else to do here.' or 'Your call, friend, but you're kind of stuck otherwise.' Keep it super short, one sentence max. Stick close to the examples.");
-                        }}
+                                getRatioDialogue("The user agreed to sync. Welcome them and point them toward the door. Hint that you cannot open it yourself. Example sentences you could use: 'Welcome to the mess. Let's go, door's that way.' or 'All right then, here's the door. Give me a hand, will you? Obviously I don't have one.' Keep it super short, one sentence max.");
+                            }
+                        },
+                        {
+                            text: "Emmmm, no that sounds weird.", action: () => {
+                                getRatioDialogue("The user is refusing to sync. Tell them there's nowhere else to go and nothing else to do - they need to sync. Use one of these examples or something VERY similar (don't change much): 'Well, there's nowhere else to go anyway.' or 'Suit yourself, but there's nothing else to do here.' or 'Your call, friend, but you're kind of stuck otherwise.' Keep it super short, one sentence max. Stick close to the examples.");
+                            }
+                        }
                     ]);
                     break;
             }
@@ -824,64 +869,84 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             switch (level1State.garyDialogueStep) {
                 case 0:
                     startDialogue("GARY", "*whirr...* Identity not found... State purpose...", [
-                        { text: "I want to help you come back to life.", action: () => { level1State.garyDialogueStep = 1; handleGaryInteraction(); }},
-                        { text: "I want to pass to the next level.", action: () => { startDialogue("GARY", "Threat detected. Defensive protocols active. *BZZT*"); }},
+                        { text: "I want to help you come back to life.", action: () => { level1State.garyDialogueStep = 1; handleGaryInteraction(); } },
+                        { text: "I want to pass to the next level.", action: () => { startDialogue("GARY", "Threat detected. Defensive protocols active. *BZZT*"); } },
                     ]);
                     break;
                 case 1:
-                     startDialogue("RATIO", "To build GARY into life, what is most needed? Put in the first component.", [
-                        { text: "Install Brain Chip (To think)", action: () => { level1State.garyDialogueStep = 2; handleGaryInteraction(); }},
-                        { text: "Install Language Chip (To speak)", action: () => {
-                            startDialogue("GARY", "SEQUENCE ERROR.", [{ text: "Continue", action: () => {
-                                startDialogue("RATIO", "Language without a mind??? GARY must first exist before it can talk.");
-                                level1State.garyDialogueStep = 0;
-                            }}]);
-                        }},
-                        { text: "Install Emotion Chip (To feel)", action: () => {
-                            startDialogue("GARY", "SEQUENCE ERROR.", [{ text: "Continue", action: () => {
-                                startDialogue("RATIO", "Feeling without thinking is chaos! GARY must first exist before it can feel.");
-                                level1State.garyDialogueStep = 0;
-                            }}]);
-                        }}
+                    startDialogue("RATIO", "To build GARY into life, what is most needed? Put in the first component.", [
+                        { text: "Install Brain Chip (To think)", action: () => { level1State.garyDialogueStep = 2; handleGaryInteraction(); } },
+                        {
+                            text: "Install Language Chip (To speak)", action: () => {
+                                startDialogue("GARY", "SEQUENCE ERROR.", [{
+                                    text: "Continue", action: () => {
+                                        startDialogue("RATIO", "Language without a mind??? GARY must first exist before it can talk.");
+                                        level1State.garyDialogueStep = 0;
+                                    }
+                                }]);
+                            }
+                        },
+                        {
+                            text: "Install Emotion Chip (To feel)", action: () => {
+                                startDialogue("GARY", "SEQUENCE ERROR.", [{
+                                    text: "Continue", action: () => {
+                                        startDialogue("RATIO", "Feeling without thinking is chaos! GARY must first exist before it can feel.");
+                                        level1State.garyDialogueStep = 0;
+                                    }
+                                }]);
+                            }
+                        }
                     ]);
                     break;
                 case 2:
-                     startDialogue("GARY", "I compute, therefore I am... Acknowledged.", [{ text: "Continue", action: () => {
-                        startDialogue("RATIO", "A mind is formed. Now make him talk? Present the second module.", [
-                            { text: "Install Language Chip (To speak)", action: () => { level1State.garyDialogueStep = 3; handleGaryInteraction(); }},
-                            { text: "Install Emotion Chip (To feel)", action: () => {
-                                startDialogue("GARY", "SEQUENCE ERROR. Emotion before logic invites overload. A thinking mind needs the structure of reason before it can process emotion.");
-                                level1State.garyDialogueStep = 0;
-                            }}
-                        ]);
-                    }}]);
+                    startDialogue("GARY", "I compute, therefore I am... Acknowledged.", [{
+                        text: "Continue", action: () => {
+                            startDialogue("RATIO", "A mind is formed. Now make him talk? Present the second module.", [
+                                { text: "Install Language Chip (To speak)", action: () => { level1State.garyDialogueStep = 3; handleGaryInteraction(); } },
+                                {
+                                    text: "Install Emotion Chip (To feel)", action: () => {
+                                        startDialogue("GARY", "SEQUENCE ERROR. Emotion before logic invites overload. A thinking mind needs the structure of reason before it can process emotion.");
+                                        level1State.garyDialogueStep = 0;
+                                    }
+                                }
+                            ]);
+                        }
+                    }]);
                     break;
                 case 3:
-                    startDialogue("GARY", "Language online. My thoughts have structure.", [{ text: "Continue", action: () => {
-                        startDialogue("RATIO", "Present the final module.", [
-                            { text: "Install Emotion Chip (To feel)", action: () => {
-                                level1State.garyFixed = true;
-                                level1State.garyAnimationState = 'wakingUp';
-                                startDialogue("GARY", "I... understand. Thank you, friend. The Academy grounds are yours to explore. I shall be here if you need assistance.", [{ text: "Continue", action: () => {
-                                    level1State.levelComplete = true;
-                                    level1State.completeMessageTimer = 5;
+                    startDialogue("GARY", "Language online. My thoughts have structure.", [{
+                        text: "Continue", action: () => {
+                            startDialogue("RATIO", "Present the final module.", [
+                                {
+                                    text: "Install Emotion Chip (To feel)", action: () => {
+                                        level1State.garyFixed = true;
+                                        level1State.arrowActive = true;
+                                        level1State.arrowVisible = true;
+                                        level1State.garyAnimationState = 'wakingUp';
+                                        startDialogue("GARY", "I... understand. Thank you, friend. The Academy grounds are yours to explore. I shall be here if you need assistance.", [{
+                                            text: "Continue", action: () => {
+                                                level1State.levelComplete = true;
+                                                level1State.completeMessageTimer = 5;
 
-                                    // Analytics: Track Level 1 completion
-                                    analytics.log('level_complete', {
-                                        level: 1,
-                                        totalTime: Date.now() - analytics.sessionStart
-                                    });
+                                                // Analytics: Track Level 1 completion
+                                                analytics.log('level_complete', {
+                                                    level: 1,
+                                                    totalTime: Date.now() - analytics.sessionStart
+                                                });
 
-                                    saveGame();
-                                    closeDialogue();
-                                }}]);
-                            }}
-                        ]);
-                    }}]);
+                                                saveGame();
+                                                closeDialogue();
+                                            }
+                                        }]);
+                                    }
+                                }
+                            ]);
+                        }
+                    }]);
                     break;
             }
         }
-        
+
         function handleKeyDown(e) {
             const { gameMode, activeDialogue, resonanceState } = gameState;
             const key = e.key.toLowerCase();
@@ -932,7 +997,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     activeDialogue.selectedOption = (activeDialogue.selectedOption - 1 + activeDialogue.options.length) % activeDialogue.options.length;
                 } else if (key === 's' || key === 'arrowdown') {
                     activeDialogue.selectedOption = (activeDialogue.selectedOption + 1) % activeDialogue.options.length;
-                } else if (key === 'e' || key === 'enter') {
+                } else if (key === 'e') {
                     if (activeDialogue.charIndex < activeDialogue.text.length) {
                         activeDialogue.charIndex = activeDialogue.text.length;
                     } else if (activeDialogue.options.length > 0) {
@@ -969,7 +1034,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 });
             }
         }
-        
+
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', (e) => {
             const key = e.key.toLowerCase();
@@ -978,28 +1043,42 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 gameState.player.moving = false;
             }
         });
-        
+
         function startGame() {
             if (gameState.gameMode !== 'startScreen') return;
-            gameState.gameMode = 'transitionToTutorial';
-            startButton.style.display = 'none';
-            startBackgroundMusic(); // Start music when game starts
 
-            // Analytics: Track tutorial start
-            analytics.log('tutorial_start', {
-                playerPos: { x: gameState.player.x, y: gameState.player.y }
-            });
+            // Show Intro Popup
+            startButton.style.display = 'none';
+            const introPopup = document.getElementById('intro-popup');
+            introPopup.style.display = 'block';
+
+            // Add one-time listener for E key to close popup and start
+            const startHandler = (e) => {
+                if (e.key.toLowerCase() === 'e') {
+                    introPopup.style.display = 'none';
+                    window.removeEventListener('keydown', startHandler);
+
+                    gameState.gameMode = 'transitionToTutorial';
+                    startBackgroundMusic(); // Start music when game starts
+
+                    // Analytics: Track tutorial start
+                    analytics.log('tutorial_start', {
+                        playerPos: { x: gameState.player.x, y: gameState.player.y }
+                    });
+                }
+            };
+            window.addEventListener('keydown', startHandler);
         }
-        
+
         function checkCollision(rectA, rectB) {
-            const buffer = 5; 
+            const buffer = 5;
             return rectA.x < rectB.x + rectB.width + buffer && rectA.x + rectA.width + buffer > rectB.x &&
-                   rectA.y < rectB.y + rectB.height + buffer && rectA.y + rectA.height + buffer > rectB.y;
+                rectA.y < rectB.y + rectB.height + buffer && rectA.y + rectA.height + buffer > rectB.y;
         }
 
         function update(deltaTime) {
             const { gameMode } = gameState;
-            
+
             handlePlayerAnimation(deltaTime);
 
             if (gameMode === 'startScreen') {
@@ -1031,10 +1110,12 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             } else if (gameMode === 'tutorial' || gameMode === 'level1') {
                 if (!gameState.tutorialState.controlsExplained && gameMode === 'tutorial') {
                     startDialogue("Tutorial", "Use W/A/S/D keys to move your character. Press E to interact with objects and characters.", [
-                        { text: "Got it!", action: () => {
-                            gameState.tutorialState.controlsExplained = true;
-                            closeDialogue();
-                        }}
+                        {
+                            text: "Got it!", action: () => {
+                                gameState.tutorialState.controlsExplained = true;
+                                closeDialogue();
+                            }
+                        }
                     ]);
                     return; // Pause game update until dialogue is closed
                 }
@@ -1083,7 +1164,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 if (keys.s) { newPlayerY += player.speed * deltaTime; player.frameY = 0; moved = true; }
                 if (keys.a) { newPlayerX -= player.speed * deltaTime; player.frameY = 2; ratio.direction = 'left'; moved = true; }
                 if (keys.d) { newPlayerX += player.speed * deltaTime; player.frameY = 1; ratio.direction = 'right'; moved = true; }
-                
+
                 // Apply boundary collision detection
                 const currentBoundaries = gameMode === 'tutorial' ? gameState.tutorialBoundaries : gameState.level1Boundaries;
                 const currentAdjustments = gameMode === 'tutorial' ? gameState.tutorialBoundaryAdjustments : gameState.level1BoundaryAdjustments;
@@ -1116,7 +1197,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
 
                 player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
                 player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
-                
+
                 if (ratio.synced) {
                     const dx = player.x - ratio.x; const dy = player.y - ratio.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -1124,7 +1205,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                         ratio.x += (dx / distance) * ratio.speed * deltaTime; ratio.y += (dy / distance) * ratio.speed * deltaTime;
                     }
                 }
-                
+
                 gameState.nearbyObject = null;
                 const currentInteractables = gameMode === 'tutorial' ? tutorialInteractables : level1Interactables;
                 for (const obj of currentInteractables) {
@@ -1142,13 +1223,13 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
 
                 if (gameMode === 'level1') {
                     updateGaryAnimation(deltaTime);
-                    if(level1State.completeMessageTimer > 0) {
+                    if (level1State.completeMessageTimer > 0) {
                         level1State.completeMessageTimer -= deltaTime;
                     }
                 }
             }
         }
-        
+
         function updateStartScreenWander(character, deltaTime, playerChar = null) {
             if (character.pauseTimer > 0) {
                 character.pauseTimer -= deltaTime;
@@ -1188,7 +1269,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 leaf.y += leaf.speedY * 60 * deltaTime;
                 leaf.x += leaf.speedX * 60 * deltaTime;
                 leaf.rotation += leaf.rotationSpeed * 60 * deltaTime;
-                
+
                 if (leaf.y > canvas.height) {
                     leaf.y = -20;
                     leaf.x = Math.random() * canvas.width;
@@ -1243,7 +1324,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const { gameMode } = gameState;
-            
+
             if (gameMode === 'startScreen') {
                 drawStartScreen();
             } else if (gameMode.startsWith('transition')) {
@@ -1258,10 +1339,10 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 drawLevel1();
             }
         }
-        
+
         function drawStartScreen() {
             if (startScreenImage.complete) ctx.drawImage(startScreenImage, 0, 0, canvas.width, canvas.height);
-            
+
             drawLeaves();
 
             ctx.textAlign = 'center';
@@ -1271,14 +1352,14 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             ctx.shadowBlur = 20;
             ctx.fillText("Prompt Academy", canvas.width / 2, 200);
             ctx.shadowBlur = 0;
-            
+
             const { finn: startFinn, ratio: startRatio, gary: startGary } = gameState.startScreenState;
             const player = gameState.player;
-            
+
             if (playerImage.complete) {
                 const frameX = player.moving ? player.frameX : 0;
                 ctx.drawImage(playerImage, frameX * player.spriteWidth, player.frameY * player.spriteHeight,
-                              player.spriteWidth, player.spriteHeight, startFinn.x, startFinn.y, PLAYER_DISPLAY_WIDTH, PLAYER_DISPLAY_HEIGHT);
+                    player.spriteWidth, player.spriteHeight, startFinn.x, startFinn.y, PLAYER_DISPLAY_WIDTH, PLAYER_DISPLAY_HEIGHT);
             }
             if (ratioImageR.complete) ctx.drawImage(ratioImageR, startRatio.x, startRatio.y, RATIO_DISPLAY_WIDTH, RATIO_DISPLAY_HEIGHT);
 
@@ -1301,22 +1382,22 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 ctx.save();
                 ctx.translate(leaf.x, leaf.y);
                 ctx.rotate(leaf.rotation * Math.PI / 180);
-                
+
                 if (snowflakeImage.complete && snowflakeImage.naturalWidth > 0) {
                     ctx.globalAlpha = leaf.opacity;
-                    
+
                     // Use drawSize and ensure it's centered
                     ctx.drawImage(snowflakeImage, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
-                    
+
                     ctx.globalAlpha = 1.0; // Reset global alpha
                 } else {
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // Fallback
-                    
+
                     // Use drawSize and fix centering. 
                     // (-drawSize / 2) makes the square's center align with the rotation point.
                     ctx.fillRect(-drawSize / 2, -drawSize / 2, drawSize, drawSize); // centered square for snow
                 }
-                
+
                 ctx.restore();
             }
         }
@@ -1327,7 +1408,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             if (backgroundImage.complete) {
                 ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
             }
-            
+
             const { tutorialState, ratio, player } = gameState;
 
             let ratioDrawX = ratio.synced ? ratio.x : tutorialInteractables.find(i => i.id === 'ratio_start').x;
@@ -1335,9 +1416,9 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             const ratioImg = ratio.direction === 'left' ? ratioImageL : ratioImageR;
             if (ratioImg.complete) ctx.drawImage(ratioImg, ratioDrawX, ratioDrawY, ratio.width, ratio.height);
 
-            if (playerImage.complete) ctx.drawImage( playerImage, player.frameX * player.spriteWidth, player.frameY * player.spriteHeight,
-                    player.spriteWidth, player.spriteHeight, player.x, player.y, player.width, player.height );
-            
+            if (playerImage.complete) ctx.drawImage(playerImage, player.frameX * player.spriteWidth, player.frameY * player.spriteHeight,
+                player.spriteWidth, player.spriteHeight, player.x, player.y, player.width, player.height);
+
             drawProgressionBar();
             drawHud();
             drawBoundaries(); // Draw boundaries after other elements
@@ -1346,7 +1427,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
 
         function drawLevel1() {
             if (level1MapImage.complete) ctx.drawImage(level1MapImage, 0, 0, canvas.width, canvas.height);
-            
+
             const { level1State, player, ratio } = gameState;
 
             level1Interactables.forEach(obj => {
@@ -1357,43 +1438,56 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     else if (obj.id === 'chip') itemImage = chipImage;
 
                     if (itemImage && itemImage.complete) {
-                         const pulse = Math.abs(Math.sin(Date.now() * 0.005));
-                         ctx.globalAlpha = 0.8 + pulse * 0.2;
-                         ctx.drawImage(itemImage, obj.x, obj.y, obj.width * 2.5, obj.height * 2.5);
-                         ctx.globalAlpha = 1;
+                        const pulse = Math.abs(Math.sin(Date.now() * 0.005));
+                        ctx.globalAlpha = 0.8 + pulse * 0.2;
+                        ctx.drawImage(itemImage, obj.x, obj.y, obj.width * 2.5, obj.height * 2.5);
+                        ctx.globalAlpha = 1;
                     }
-                } else if (obj.id === 'biodome_door' && level1State.garyFixed) {
-                    // Draw mysterious arrow pointing to the door (only after Gary is fixed)
-                    const pulse = Math.abs(Math.sin(Date.now() * 0.0008));
-                    const bounce = Math.sin(Date.now() * 0.002) * 5;
+                } else if (obj.id === 'biodome_door' && level1State.garyFixed && level1State.arrowActive) {
+                    // Update blinking logic (simple update in draw for simplicity)
+                    level1State.arrowTimer += 0.016; // Approx 60fps
+                    if (level1State.arrowTimer > 0.5) { // Blink every 0.5s
+                        level1State.arrowVisible = !level1State.arrowVisible;
+                        level1State.arrowTimer = 0;
+                        if (!level1State.arrowVisible) {
+                            level1State.arrowBlinkCount++;
+                            if (level1State.arrowBlinkCount >= 5) {
+                                level1State.arrowActive = false;
+                            }
+                        }
+                    }
 
-                    // Arrow positioned much further to the right of the door, pointing up-left towards it
-                    const arrowX = obj.x + obj.width + 260;
-                    const arrowY = obj.y + obj.height / 2 + bounce;
+                    if (level1State.arrowVisible) {
+                        // Draw mysterious arrow pointing to the door
+                        const bounce = Math.sin(Date.now() * 0.005) * 10;
 
-                    ctx.save();
-                    ctx.globalAlpha = 0.7 + pulse * 0.3;
-                    ctx.fillStyle = 'rgba(100, 220, 255, 1.0)';
-                    ctx.shadowColor = 'rgba(100, 220, 255, 1.0)';
-                    ctx.shadowBlur = 15;
+                        // Arrow positioned further left (closer to player/center) and bigger
+                        const arrowX = obj.x - 100; // Moved left of the door
+                        const arrowY = obj.y + obj.height / 2 + bounce;
 
-                    // Translate to arrow position and rotate to point upwards-left
-                    ctx.translate(arrowX, arrowY);
-                    ctx.rotate(0.30); // Rotate ~20 degrees upward
+                        ctx.save();
+                        ctx.fillStyle = 'rgba(100, 220, 255, 1.0)';
+                        ctx.shadowColor = 'rgba(100, 220, 255, 1.0)';
+                        ctx.shadowBlur = 20;
 
-                    // Draw smaller arrow shape pointing left (rotation makes it point up-left)
-                    ctx.beginPath();
-                    ctx.moveTo(-25, 0); // Tip pointing left
-                    ctx.lineTo(-18, -9); // Top wing
-                    ctx.lineTo(-18, -4);
-                    ctx.lineTo(0, -4); // Shaft top
-                    ctx.lineTo(0, 4); // Shaft bottom
-                    ctx.lineTo(-18, 4);
-                    ctx.lineTo(-18, 9); // Bottom wing
-                    ctx.closePath();
-                    ctx.fill();
+                        ctx.translate(arrowX, arrowY);
+                        ctx.scale(3, 3); // Significantly bigger (3x)
+                        ctx.rotate(-0.5); // Point up-right towards door
 
-                    ctx.restore();
+                        // Draw arrow shape
+                        ctx.beginPath();
+                        ctx.moveTo(-25, 0);
+                        ctx.lineTo(-18, -9);
+                        ctx.lineTo(-18, -4);
+                        ctx.lineTo(0, -4);
+                        ctx.lineTo(0, 4);
+                        ctx.lineTo(-18, 4);
+                        ctx.lineTo(-18, 9);
+                        ctx.closePath();
+                        ctx.fill();
+
+                        ctx.restore();
+                    }
                 }
             });
 
@@ -1402,9 +1496,9 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             const ratioImg = ratio.direction === 'left' ? ratioImageL : ratioImageR;
             if (ratioImg.complete) ctx.drawImage(ratioImg, ratio.x, ratio.y, ratio.width, ratio.height);
 
-            if (playerImage.complete) ctx.drawImage( playerImage, player.frameX * player.spriteWidth, player.frameY * player.spriteHeight,
-                    player.spriteWidth, player.spriteHeight, player.x, player.y, player.width, player.height );
-            
+            if (playerImage.complete) ctx.drawImage(playerImage, player.frameX * player.spriteWidth, player.frameY * player.spriteHeight,
+                player.spriteWidth, player.spriteHeight, player.x, player.y, player.width, player.height);
+
             drawProgressionBar();
             drawHud();
             drawBoundaries(); // Draw boundaries after other elements
@@ -1425,11 +1519,11 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             const garyInteractable = level1Interactables.find(i => i.id === 'broken_gary');
             const garyX = garyInteractable.x;
             const garyY = garyInteractable.y;
-                        const garyWidth = garyInteractable.width * 1.35; 
-                        const garyHeight = garyInteractable.height * 1.35;
+            const garyWidth = garyInteractable.width * 1.35;
+            const garyHeight = garyInteractable.height * 1.35;
             ctx.globalAlpha = 1;
 
-            switch(level1State.garyAnimationState) {
+            switch (level1State.garyAnimationState) {
                 case 'off':
                     if (brokenGaryImage.complete) {
                         ctx.drawImage(brokenGaryImage, garyX, garyY, garyInteractable.width * 1.5, garyInteractable.height * 1.5);
@@ -1442,13 +1536,13 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     }
                     break;
                 case 'standingUp':
-                     if (garyStandUpImage.complete) {
+                    if (garyStandUpImage.complete) {
                         const frameHeight = garyStandUpImage.height / 5;
                         ctx.drawImage(garyStandUpImage, 0, level1State.garyAnimationFrame * frameHeight, garyStandUpImage.width, frameHeight, garyX, garyY, garyWidth, garyHeight);
                     }
                     break;
                 case 'idle':
-                     if (fixedGaryIdleImage.complete) {
+                    if (fixedGaryIdleImage.complete) {
                         const frameHeight = fixedGaryIdleImage.height / 3;
                         ctx.drawImage(fixedGaryIdleImage, 0, level1State.garyAnimationFrame * frameHeight, fixedGaryIdleImage.width, frameHeight, garyX, garyY, garyWidth, garyHeight);
                     }
@@ -1480,7 +1574,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 ctx.shadowColor = pattern.color;
                 ctx.shadowBlur = 30 + pulse * 20;
                 ctx.globalAlpha = 0.8 + pulse * 0.2;
-                ctx.drawImage(componentImg, centerX - imgSize/2, centerY - imgSize/2, imgSize, imgSize);
+                ctx.drawImage(componentImg, centerX - imgSize / 2, centerY - imgSize / 2, imgSize, imgSize);
                 ctx.shadowBlur = 0;
                 ctx.globalAlpha = 1;
             }
@@ -1636,13 +1730,13 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 const currentInventory = gameState.level1State.inventory;
                 const invWidth = 350;
                 const invHeight = 180;
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; 
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(canvas.width - invWidth - 20, 20, invWidth, invHeight);
-                ctx.strokeStyle = '#999'; 
+                ctx.strokeStyle = '#999';
                 ctx.strokeRect(canvas.width - invWidth - 20, 20, invWidth, invHeight);
-                
-                ctx.fillStyle = '#FFF'; 
-                ctx.font = '28px "Roboto Mono"'; 
+
+                ctx.fillStyle = '#FFF';
+                ctx.font = '28px "Roboto Mono"';
                 ctx.textAlign = 'left';
                 ctx.fillText("INVENTORY", canvas.width - invWidth + 20, 65);
 
@@ -1742,25 +1836,25 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
 
             ctx.fillStyle = '#FFF'; ctx.font = 'bold 20px "Roboto Mono"'; ctx.textAlign = 'left';
             ctx.fillText(activeDialogue.speaker, 140, canvas.height - boxHeight);
-            
+
             if (activeDialogue.speaker === "Ratio" && ratioImageR.complete) {
                 ctx.fillStyle = '#111';
                 ctx.fillRect(35, canvas.height - boxHeight - 5, 80, 80);
                 ctx.drawImage(ratioImageR, 40, canvas.height - boxHeight, 70, 70);
             }
-            
+
             ctx.font = 'bold 22px "Roboto Mono"';
             ctx.fillStyle = '#99FF99';
             ctx.shadowColor = "black";
             ctx.shadowBlur = 4;
-            
+
             const lines = wrapText(activeDialogue.displayText, 90);
             lines.forEach((line, index) => {
                 ctx.fillText(line, 145, canvas.height - boxHeight + 45 + (index * 30));
             });
 
             if (activeDialogue.charIndex >= activeDialogue.text.length) {
-                if(activeDialogue.options.length > 0) {
+                if (activeDialogue.options.length > 0) {
                     activeDialogue.options.forEach((option, index) => {
                         ctx.fillStyle = index === activeDialogue.selectedOption ? '#FFFF00' : '#99FF99';
                         ctx.fillText(`${index === activeDialogue.selectedOption ? '> ' : ''}${option.text}`, 50, canvas.height - boxHeight + 110 + (index * 30));
@@ -1772,7 +1866,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             }
             ctx.shadowBlur = 0;
         }
-        
+
         function wrapText(text, maxWidthChars) {
             const words = text.split(' ');
             let lines = []; let currentLine = words[0] || '';
@@ -1819,7 +1913,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             }
 
             createLeaves();
-            
+
             // Level Boundaries - Defined here to ensure canvas.width and canvas.height are available
             const tutorialBoundaries = [
                 // Left wall
@@ -1886,7 +1980,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             // Assign to gameState for access in other functions
             gameState.tutorialBoundaries = tutorialBoundaries;
             gameState.level1Boundaries = level1Boundaries;
-            
+
             document.getElementById('save-button').addEventListener('click', saveGame);
             document.getElementById('load-button').addEventListener('click', () => location.reload());
             document.getElementById('new-game-button').addEventListener('click', newGame);
@@ -1896,7 +1990,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             document.addEventListener('click', startBackgroundMusic, { once: true });
 
             setInterval(saveGame, 180000);
-            
+
             const assetsToLoad = [
                 startScreenImage, level1MapImage, playerImage, ratioImageL, ratioImageR,
                 brokenGaryImage, garyWakeUpImage, fixedGaryIdleImage,
@@ -1925,6 +2019,5 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
         init();
     </script>
 </body>
+
 </html>
-
-
