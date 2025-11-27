@@ -1316,8 +1316,7 @@
             // Animate prompt interface fade-in
             if (ecologyState.showPromptInterface) {
                 if (ecologyState.promptInterfaceAlpha < 1) {
-                    ecologyState.promptInterfaceAlpha += 3 * deltaTime; //
-                    Fast fade -in
+                    ecologyState.promptInterfaceAlpha += 3 * deltaTime; // Fast fade-in
                     if (ecologyState.promptInterfaceAlpha > 1) ecologyState.promptInterfaceAlpha = 1;
                 }
             }
@@ -1377,7 +1376,7 @@
                 newPlayerX));
             player.y = Math.max(0, Math.min(canvas.height - player.height, newPlayerY)); //
 
-                Ratio follows player
+            // Ratio follows player
             const dx = player.x - ratio.x;
             const dy = player.y - ratio.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
@@ -1705,8 +1704,7 @@
                 drawPromptInterface();
             }
 
-            //
-            Draw Level 2 Complete message
+            //Draw Level 2 Complete message
             if (gameState.ecologyState.completeMessageTimer > 0) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(0, 80, canvas.width, 60);

@@ -158,6 +158,40 @@
     <script type="module">
         // Import game utilities
         import { analytics, navigateToLevel } from './game_utils.js';
+        // Save/Load functionality
+        function saveGame() {
+            try {
+                if (typeof gameState !== 'undefined') {
+                    localStorage.setItem('startLevelSave_v1', JSON.stringify(gameState));
+                }
+            } catch (error) {
+                console.error("Could not save game:", error);
+            }
+        }
+
+        function loadGame() {
+            try {
+                const savedData = localStorage.getItem('startLevelSave_v1');
+                if (savedData && typeof gameState !== 'undefined') {
+                    const loadedState = JSON.parse(savedData);
+                    Object.assign(gameState, loadedState);
+                    
+                    // Fix: Clear any active dialogues since action functions can't be serialized
+                    gameState.activeDialogue = {
+                        isActive: false,
+                        speaker: null,
+                        text: '',
+                        displayText: '',
+                        charIndex: 0,
+                        options: [],
+                        selectedOption: 0
+                    };
+                }
+            } catch (error) {
+                console.error("Could not load game:", error);
+                localStorage.removeItem('startLevelSave_v1');
+            }
+        }
 
         function handleInteraction() {
             const { nearbyObject, activeDialogue, tutorialState } = gameState;
