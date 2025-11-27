@@ -52,7 +52,7 @@
             width: 100%;
             max-width: 1536px;
             height: auto;
-            aspect-ratio: 1536 / 1024;
+            aspect-ratio: 1366 / 768;
             background-color: #000;
         }
         #game-controls {
@@ -1259,7 +1259,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             if (gameMode === 'startScreen') {
                 drawStartScreen();
             } else if (gameMode === 'introPopup') {
-                drawStartScreen();
+                // Draw only the intro popup (solid background)
                 drawIntroPopup();
             } else if (gameMode.startsWith('transition')) {
                 const bgImage = gameMode === 'transitionToLevel1' ? level1MapImage : doorClosedImage;
@@ -1275,8 +1275,8 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
         }
 
         function drawIntroPopup() {
-            // Semi-transparent dark overlay
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            // Solid black background
+            ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Draw introduction background image centered if loaded, otherwise black box
