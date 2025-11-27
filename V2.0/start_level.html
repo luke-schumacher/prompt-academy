@@ -393,7 +393,7 @@
         doorOpenImage.src = 'assets/start/door_open.png';
         doorClosedImage.src = 'assets/start/door_closed.png';
         snowflakeImage.src = 'assets/start/snowflake.png';
-        introductionImage.src = 'ui/introduction_background.png';
+        introductionImage.src = 'assets/ui/introduction_background.png';
         
         const ratioPersona = {
             tutorialSystemPrompt: `You are Ratio, an old, wise, and grumpy guide. You are leading a new student through their first trial at the Prompt Academy. You are calling them on a journey, but pretending that you did not need them to be there.
@@ -1442,14 +1442,14 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                         // Draw only during the "on" phase (first 60% of duration)
                         if (elapsed < flashDuration * 0.6 && level1State.arrowFlashCount < 5) {
                             // Arrow positioned closer to the door (moved left)
-                            const arrowX = obj.x + obj.width + 80; // Was + 260, moved left
+                            const arrowX = obj.x + obj.width + 150; // Moved more to the right
                             const arrowY = obj.y + obj.height / 2;
 
                             ctx.save();
                             ctx.translate(arrowX, arrowY);
                             
-                            // Significantly enlarge (3x size)
-                            ctx.scale(3, 3);
+                            // Smaller size (1.5x size instead of 3x)
+                            ctx.scale(1.5, 1.5);
                             ctx.rotate(0.2); // Slight rotation
 
                             ctx.fillStyle = 'rgba(100, 220, 255, 1.0)';
@@ -1840,7 +1840,9 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 if(activeDialogue.options.length > 0) {
                     activeDialogue.options.forEach((option, index) => {
                         ctx.fillStyle = index === activeDialogue.selectedOption ? '#FFFF00' : '#99FF99';
-                        ctx.fillText(`${index === activeDialogue.selectedOption ? '> ' : ''}${option.text}`, 50, canvas.height - boxHeight + 110 + (index * 30));
+                        // Add [E] to the selected option
+                        const prefix = index === activeDialogue.selectedOption ? '[E] > ' : '    ';
+                        ctx.fillText(`${prefix}${option.text}`, 50, canvas.height - boxHeight + 110 + (index * 30));
                     });
                 } else {
                     ctx.fillStyle = '#FFFF00'; // Changed to yellow
