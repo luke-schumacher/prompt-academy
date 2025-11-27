@@ -1252,10 +1252,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            ctx.save();
-            // Apply 90% Zoom and center the view
-            ctx.translate(canvas.width * 0.05, canvas.height * 0.05);
-            ctx.scale(0.9, 0.9);
+            // Zoom removed per user request
 
             const { gameMode } = gameState;
             
@@ -1275,8 +1272,6 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             } else if (gameMode === 'level1') {
                 drawLevel1();
             }
-
-            ctx.restore();
         }
 
         function drawIntroPopup() {
@@ -1284,33 +1279,40 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw introduction background image centered
-            if (introductionImage.complete) {
-                const imgWidth = 1000; // Adjust as needed
-                const imgHeight = 600;
-                const x = (canvas.width - imgWidth) / 2;
-                const y = (canvas.height - imgHeight) / 2;
-                
+            // Draw introduction background image centered if loaded, otherwise black box
+            const imgWidth = 1000; 
+            const imgHeight = 600;
+            const x = (canvas.width - imgWidth) / 2;
+            const y = (canvas.height - imgHeight) / 2;
+
+            if (introductionImage.complete && introductionImage.naturalWidth > 0) {
                 ctx.shadowColor = 'rgba(0, 255, 255, 0.5)';
                 ctx.shadowBlur = 30;
                 ctx.drawImage(introductionImage, x, y, imgWidth, imgHeight);
                 ctx.shadowBlur = 0;
-                
-                // Draw text on top of the image
-                ctx.fillStyle = '#FFFFFF';
-                ctx.textAlign = 'center';
-                
-                ctx.font = 'bold 36px "Roboto Mono"';
-                ctx.fillText("WELCOME TO PROMPT ACADEMY", canvas.width / 2, y + 200);
-                
-                ctx.font = '24px "Roboto Mono"';
-                ctx.fillText("Your journey into the world of", canvas.width / 2, y + 280);
-                ctx.fillText("AI behavior begins here.", canvas.width / 2, y + 320);
-                
-                ctx.font = 'bold 28px "Roboto Mono"';
-                ctx.fillStyle = '#FFFF00'; // Yellow
-                ctx.fillText("Press [E] to Start", canvas.width / 2, y + 450);
+            } else {
+                // Fallback if image missing
+                ctx.fillStyle = '#111';
+                ctx.fillRect(x, y, imgWidth, imgHeight);
+                ctx.strokeStyle = '#00FFFF';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, imgWidth, imgHeight);
             }
+            
+            // Draw text on top of the image/box
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            
+            ctx.font = 'bold 36px "Roboto Mono"';
+            ctx.fillText("WELCOME TO PROMPT ACADEMY", canvas.width / 2, y + 200);
+            
+            ctx.font = '24px "Roboto Mono"';
+            ctx.fillText("Your journey into the world of", canvas.width / 2, y + 280);
+            ctx.fillText("AI behavior begins here.", canvas.width / 2, y + 320);
+            
+            ctx.font = 'bold 28px "Roboto Mono"';
+            ctx.fillStyle = '#FFFF00'; // Yellow
+            ctx.fillText("Press [E] to Start", canvas.width / 2, y + 450);
         }
         
         function drawStartScreen() {
