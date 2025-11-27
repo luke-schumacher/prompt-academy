@@ -4,7 +4,8 @@
       "Bash(export CLAUDE_CODE_MAX_OUTPUT_TOKENS=32000)",
       "Bash(dir /s /b *.html)",
       "Bash(node:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []
