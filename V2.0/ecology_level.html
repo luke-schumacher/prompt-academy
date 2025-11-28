@@ -296,7 +296,7 @@
 
         // Interactables for Bio-Dome main room
         const bioDomeInteractables = [
-            { id: 'biobot', name: 'Bio-Bot', x: 650, y: 540, width: 180, height: 180 }, // Moved UP to avoid text overlap
+            { id: 'biobot', name: 'Bio-Bot', x: 650, y: 640, width: 180, height: 180 }, // Moved UP to avoid text overlap
             { id: 'ratio', name: 'Ratio (Guide)', x: 0, y: 0, width: 120, height: 120 }, // Dynamic position, generous hitbox
             { id: 'door_exit', name: 'Exit to Academy', x: 700, y: 50, width: 150, height: 200 },
         ];
@@ -1251,8 +1251,8 @@
             const { ecologyState } = gameState;
             const bioBotWidth = 220; // Bigger
             const bioBotHeight = 280; // Taller to fix aspect ratio
-            const bioBotX = 340; // Moved 15% more to the left
-            const bioBotY = 700; // Moved down further
+            const bioBotX = 440; // Moved 15% more to the left
+            const bioBotY = 420; // Moved down further
 
             // Add emotional glow effect
             if (ecologyState.bioBotMood === 'sad') {
