@@ -379,6 +379,7 @@
         const doorClosedImage = new Image();
         const snowflakeImage = new Image();
         const introductionImage = new Image();
+        const textboxBackgroundImage = new Image();
         
         startScreenImage.src = 'assets/start/start_background.png';
         level1MapImage.src = 'assets/start/level_1_background.png';
@@ -396,6 +397,7 @@
         doorClosedImage.src = 'assets/start/door_closed.png';
         snowflakeImage.src = 'assets/start/snowflake.png';
         introductionImage.src = 'assets/ui/introduction_background.png';
+        textboxBackgroundImage.src = 'assets/ui/textbox_background.png';
         
         const ratioPersona = {
             tutorialSystemPrompt: `You are Ratio, an old, wise, and grumpy guide. You are leading a new student through their first trial at the Prompt Academy. You are calling them on a journey, but pretending that you did not need them to be there.
@@ -1277,41 +1279,43 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
         }
 
         function drawIntroPopup() {
-            // Solid black background
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw introduction background image centered if loaded, otherwise black box
-            const imgWidth = 1000; 
-            const imgHeight = 600;
-            const x = (canvas.width - imgWidth) / 2;
-            const y = (canvas.height - imgHeight) / 2;
-
+            // Draw introduction background image as full screen background
             if (introductionImage.complete && introductionImage.naturalWidth > 0) {
-                ctx.shadowColor = 'rgba(0, 255, 255, 0.5)';
-                ctx.shadowBlur = 30;
-                ctx.drawImage(introductionImage, x, y, imgWidth, imgHeight);
-                ctx.shadowBlur = 0;
+                ctx.drawImage(introductionImage, 0, 0, canvas.width, canvas.height);
             } else {
-                // Fallback if image missing
-                ctx.fillStyle = '#111';
-                ctx.fillRect(x, y, imgWidth, imgHeight);
-                ctx.strokeStyle = '#00FFFF';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(x, y, imgWidth, imgHeight);
+                // Fallback to black background if image missing
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
-            
-            // Draw text on top of the image/box
+
+            // Draw textbox background image
+            const boxWidth = 1000;
+            const boxHeight = 600;
+            const x = (canvas.width - boxWidth) / 2;
+            const y = (canvas.height - boxHeight) / 2;
+
+            if (textboxBackgroundImage.complete && textboxBackgroundImage.naturalWidth > 0) {
+                ctx.drawImage(textboxBackgroundImage, x, y, boxWidth, boxHeight);
+            } else {
+                // Fallback to black box if image not loaded
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                ctx.fillRect(x, y, boxWidth, boxHeight);
+                ctx.strokeStyle = '#00FFFF';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x, y, boxWidth, boxHeight);
+            }
+
+            // Draw text on top of the dark box
             ctx.fillStyle = '#FFFFFF';
             ctx.textAlign = 'center';
-            
+
             ctx.font = 'bold 36px "Roboto Mono"';
             ctx.fillText("WELCOME TO PROMPT ACADEMY", canvas.width / 2, y + 200);
-            
+
             ctx.font = '24px "Roboto Mono"';
             ctx.fillText("Your journey into the world of", canvas.width / 2, y + 280);
             ctx.fillText("AI behavior begins here.", canvas.width / 2, y + 320);
-            
+
             ctx.font = 'bold 28px "Roboto Mono"';
             ctx.fillStyle = '#FFFF00'; // Yellow
             ctx.fillText("Press [E] to Start", canvas.width / 2, y + 450);
@@ -1982,7 +1986,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 startScreenImage, level1MapImage, playerImage, ratioImageL, ratioImageR,
                 brokenGaryImage, garyWakeUpImage, fixedGaryIdleImage,
                 cogImage, loomImage, chipImage, doorSpriteImage, doorOpenImage, doorClosedImage,
-                snowflakeImage, introductionImage
+                snowflakeImage, introductionImage, textboxBackgroundImage
             ];
             let loadedCount = 0;
             const totalAssets = assetsToLoad.length;
