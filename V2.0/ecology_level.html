@@ -88,11 +88,11 @@
         }
         #replay-button {
             position: absolute;
-            bottom: 20%;
+            bottom: 10%;
             left: 50%;
             transform: translateX(-50%);
-            padding: 20px 40px;
-            font-size: 28px;
+            padding: 13px 27px;
+            font-size: 19px;
             font-family: 'Roboto Mono', monospace;
             background-color: rgba(10, 25, 40, 0.8);
             color: #00FFFF;
@@ -1133,6 +1133,7 @@
                                         closeDialogue();
                                         // Switch to End Screen
                                         gameState.gameMode = 'endScreen';
+                                        clearInterval(autoSaveInterval); // Stop auto-save on completion
                                         saveGame(); // Save AFTER setting gameMode
                                         // Show Replay Button
                                         const replayBtn = document.getElementById('replay-button');
@@ -1166,12 +1167,16 @@
                     // Fallback background
                     ctx.fillStyle = '#051525'; // Deep blue/black
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
-                    ctx.font = 'bold 60px "Press Start 2P"';
-                    ctx.fillStyle = '#00FFFF';
-                    ctx.textAlign = 'center';
-                    ctx.fillText("LEVEL COMPLETE", canvas.width / 2, canvas.height / 2 - 50);
                 }
+
+                // Draw completion title at top
+                ctx.fillStyle = '#FFFFFF';
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 48px "Roboto Mono"';
+                ctx.shadowColor = '#00FFFF';
+                ctx.shadowBlur = 20;
+                ctx.fillText('GAME COMPLETE', canvas.width / 2, 150);
+                ctx.shadowBlur = 0;
             }
 
             if (gameMode !== 'endScreen') {
@@ -1975,7 +1980,7 @@
             // Start music on any click
             document.addEventListener('click', startBackgroundMusic, { once: true });
 
-            setInterval(saveGame, 180000);
+            const autoSaveInterval = setInterval(saveGame, 180000);
 
             // Start intro dialogue
             if (!gameState.ecologyState.introDone) {
