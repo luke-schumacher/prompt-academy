@@ -33,7 +33,7 @@
             align-items: center;
             border: 2px solid #111;
             width: auto;
-            max-height: 90vh;
+            max-height: 85vh;
             aspect-ratio: 1536 / 1024;
             box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 10px 30px rgba(0,10px,30px,0.5);
         }
@@ -384,6 +384,12 @@
                     // Fix: Clear species selection if it was active
                     if (gameState.ecologyState && gameState.ecologyState.showSpeciesSelection) {
                         gameState.ecologyState.showSpeciesSelection = false;
+                    }
+
+                    // Fix: If germination was in progress, complete it (edge case protection)
+                    if (gameState.ecologyState && gameState.ecologyState.germinationState === 'germinating') {
+                        gameState.ecologyState.germinationState = 'complete';
+                        gameState.ecologyState.germinationFrame = 5;
                     }
 
                     showSaveFeedback('Save data loaded!');
@@ -1109,6 +1115,7 @@
                     if (ecologyState.germinationFrame >= 6) {
                         ecologyState.germinationState = 'complete';
                         ecologyState.levelComplete = true;
+                        ecologyState.mistakes = 0; // Reset mistakes for clean state
                         ecologyState.completeMessageTimer = 5;
 
                         // Analytics: Track Level 2 completion
@@ -1123,10 +1130,10 @@
                             { text: "Continue", action: () => {
                                 startDialogue("Ratio", "Well, well. You actually did it. I'm... mildly impressed.", [
                                     { text: "Great!", action: () => {
-                                        saveGame();
                                         closeDialogue();
                                         // Switch to End Screen
                                         gameState.gameMode = 'endScreen';
+                                        saveGame(); // Save AFTER setting gameMode
                                         // Show Replay Button
                                         const replayBtn = document.getElementById('replay-button');
                                         if (replayBtn) replayBtn.style.display = 'block';
@@ -1218,17 +1225,17 @@
             const bioBotWidth = 100;
             const bioBotHeight = 130;
 
-            if (ecologyState.bioBotMood === 'sad') {
-                // Sad bot - static image
-                if (bioBotSadImage.complete) {
-                    ctx.drawImage(bioBotSadImage, bioBotObj.x, bioBotObj.y + ecologyState.bioBotBobOffset, bioBotWidth, bioBotHeight);
-                }
-            } else if (ecologyState.levelComplete && ecologyState.bioBotMood === 'happy') {
-                // Happy bot after successful completion
+            if (ecologyState.levelComplete) {
+                // Happy bot - level is complete!
                 if (bioBotHappyImage.complete) {
                     ctx.drawImage(bioBotHappyImage,
                         bioBotObj.x, bioBotObj.y + ecologyState.bioBotBobOffset,
                         bioBotWidth, bioBotHeight);
+                }
+            } else if (ecologyState.bioBotMood === 'sad') {
+                // Sad bot - mistakes/cooldown
+                if (bioBotSadImage.complete) {
+                    ctx.drawImage(bioBotSadImage, bioBotObj.x, bioBotObj.y + ecologyState.bioBotBobOffset, bioBotWidth, bioBotHeight);
                 }
             } else {
                 // Default idle bot - use static idle standing image on main screen
@@ -1266,15 +1273,15 @@
             // Calculate final Y position with subtle bobbing applied to entire image
             const finalY = bioBotY + ecologyState.bioBotBobOffset;
 
-            if (ecologyState.bioBotMood === 'sad') {
-                // Sad bot - static image
-                if (bioBotSadImage.complete) {
-                    ctx.drawImage(bioBotSadImage, bioBotX, finalY, bioBotWidth, bioBotHeight);
-                }
-            } else if (ecologyState.levelComplete && ecologyState.bioBotMood === 'happy') {
-                // Happy bot after successful completion
+            if (ecologyState.levelComplete) {
+                // Happy bot - level is complete!
                 if (bioBotHappyImage.complete) {
                     ctx.drawImage(bioBotHappyImage, bioBotX, finalY, bioBotWidth, bioBotHeight);
+                }
+            } else if (ecologyState.bioBotMood === 'sad') {
+                // Sad bot - mistakes/cooldown
+                if (bioBotSadImage.complete) {
+                    ctx.drawImage(bioBotSadImage, bioBotX, finalY, bioBotWidth, bioBotHeight);
                 }
             } else {
                 // Default idle bot - use blinking animation on workbench (like Gary's animation)
@@ -1436,9 +1443,9 @@
                 ctx.shadowBlur = 0;
             }
 
-            // Draw static down-arrow for exit
+            // Draw static down-arrow for exit (only after reading species info)
             const exitObj = terraVaultInteractables.find(o => o.id === 'exit_vault');
-            if (exitObj) {
+            if (exitObj && gameState.ecologyState.holoBloomInfoRead) {
                 const arrowX = exitObj.x + exitObj.width / 2;
                 const arrowY = exitObj.y - 40;
                 
@@ -1769,7 +1776,9 @@
                     if (gameState.nearbyObject.id === 'exit_vault') {
                         textPart3 = ` to return to workbench`;
                     } else if (gameState.nearbyObject.id === 'door_exit' || gameState.nearbyObject.id === 'exit_door') {
-                        textPart3 = ` to exit`; // Optional clean up for other doors
+                        textPart3 = ` to exit`;
+                    } else if (gameState.nearbyObject.id === 'vault_podium') {
+                        textPart3 = ` to select species`;
                     }
 
                     const originalTextAlign = ctx.textAlign;
@@ -1847,7 +1856,11 @@
             const { activeDialogue } = gameState;
             activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
 
-            const boxHeight = 200;
+            // Dynamic box height based on number of options
+            const baseHeight = 200;
+            const optionCount = activeDialogue.options.length;
+            const extraHeight = optionCount > 2 ? (optionCount - 2) * 30 : 0;
+            const boxHeight = baseHeight + extraHeight;
 
             // Draw box with gradient - no border
             const boxGradient = ctx.createLinearGradient(0, canvas.height - boxHeight - 20, 0, canvas.height);
@@ -1933,6 +1946,11 @@
         function init() {
             loadGame();
 
+            // Check if cooldown has expired on load
+            if (gameState.ecologyState.cooldownUntil) {
+                checkCooldown();
+            }
+
             document.getElementById('save-button').addEventListener('click', () => {
                 startBackgroundMusic(); // Start music on click
                 saveGame();
@@ -1944,6 +1962,14 @@
             document.getElementById('main-menu-button').addEventListener('click', () => {
                 startBackgroundMusic(); // Start music on click
                 mainMenu();
+            });
+            document.getElementById('replay-button').addEventListener('click', () => {
+                // Clear the ecology level save
+                localStorage.removeItem('ecologyLevelSave_v1');
+                // Navigate back to start level
+                window.location.href = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                    ? 'start_level.html'
+                    : '/start_level';
             });
 
             // Start music on any click
