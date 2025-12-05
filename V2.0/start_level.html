@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prompt Academy</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -37,8 +38,7 @@
             align-items: center;
             border: 2px solid #111;
             width: auto;
-            max-height: 85vh;
-            aspect-ratio: 1536 / 1024;
+            max-height: 98vh;
             box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 10px 30px rgba(0,10px,30px,0.5);
         }
         #canvas-header {
@@ -52,9 +52,11 @@
             border: 2px solid #4a4a4a;
             border-radius: 8px;
             width: 100%;
-            max-width: 1536px;
+            max-width: 91vw;
+            max-height: 77vh;
             height: auto;
-            aspect-ratio: 1536 / 1024; 
+            aspect-ratio: 1536 / 1024;
+            object-fit: contain;
             background-color: #000;
         }
         #game-controls {
@@ -273,6 +275,7 @@
                 inventory: { cog: false, loom: false, chip: false },
                 garyFixed: false,
                 garyDialogueStep: 0,
+                garyInteractionStarted: false,
                 garyAnimationState: 'off',
                 garyAnimationFrame: 0,
                 garyAnimationTimer: 0,
@@ -359,7 +362,7 @@
             { id: 'broken_gary', name: 'Deactivated GARY', x: 1380, y: 450, width: 60, height: 78 },
             { id: 'cog', name: 'Brain Chip', x: 350, y: 550, width: 20, height: 20 }, // Left side of courtyard
             { id: 'loom', name: 'Language Chip', x: 750, y: 700, width: 20, height: 20 }, // Center-bottom area
-            { id: 'chip', name: 'Emotion Chip', x: 1100, y: 550, width: 20, height: 20 }, // Right side of courtyard
+            { id: 'chip', name: 'Emotion Personality Chip', x: 1100, y: 550, width: 20, height: 20 }, // Right side of courtyard
             { id: 'biodome_door', name: 'Bio-Dome Entrance', x: 700, y: 560, width: 70, height: 100 } // Near empathy chip, subtle door
         ];
         
@@ -438,7 +441,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 display: ['↑', '→', '↓', '←', '↑', '→', '↓', '←'],
                 pulseDuration: 0.7, // Flowing, organic rhythm
                 color: '#FF69B4', // Pink
-                name: 'Emotion Chip',
+                name: 'Emotion Personality Chip',
                 description: 'Feel the emotional resonance...'
             }
         };
@@ -583,7 +586,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 let missingParts = [];
                 if (!level1State.inventory.cog) missingParts.push('Brain Chip');
                 if (!level1State.inventory.loom) missingParts.push('Language Chip');
-                if (!level1State.inventory.chip) missingParts.push('Emotion Chip');
+                if (!level1State.inventory.chip) missingParts.push('Emotion Personality Chip');
 
                 getRatioDialogue(`The user just found the ${resonancePatterns[resonanceState.currentPiece].name}. Congratulate them. There are exactly ${partsLeft} parts left to find. ${partsLeft > 0 ? 'Still missing: ' + missingParts.join(', ') : 'All parts collected!'} Keep it super short, one sentence max.`);
             }
@@ -767,10 +770,10 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                         // Don't show any dialogue if Gary isn't fixed yet - door is hidden
                         return;
                     } else if (gameState.level1State.levelComplete) {
-                        // Navigate to ecology level (works with both local and Netlify)
+                        // Navigate to biodome intro transition screen (works with both local and Netlify)
                         window.location.href = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                            ? 'ecology_level.html'
-                            : '/ecology_level';
+                            ? 'biodome_intro.html'
+                            : '/biodome_intro';
                     } else {
                         startDialogue("Ratio", "The Bio-Dome is locked. You'll need to complete Level 1 first by helping GARY.", [
                             { text: "Understood", action: closeDialogue }
@@ -830,7 +833,11 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             switch (level1State.garyDialogueStep) {
                 case 0:
                     startDialogue("GARY", "*whirr...* Identity not found... State purpose...", [
-                        { text: "I want to help you come back to life.", action: () => { level1State.garyDialogueStep = 1; handleGaryInteraction(); }},
+                        { text: "I want to help you come back to life.", action: () => {
+                            level1State.garyDialogueStep = 1;
+                            level1State.garyInteractionStarted = true;
+                            handleGaryInteraction();
+                        }},
                         { text: "I want to pass to the next level.", action: () => { startDialogue("GARY", "Threat detected. Defensive protocols active. *BZZT*"); }},
                     ]);
                     break;
@@ -843,7 +850,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                                 level1State.garyDialogueStep = 0;
                             }}]);
                         }},
-                        { text: "Install Emotion Chip (To feel)", action: () => {
+                        { text: "Install Emotion Personality Chip (To feel)", action: () => {
                             startDialogue("GARY", "SEQUENCE ERROR.", [{ text: "Continue", action: () => {
                                 startDialogue("RATIO", "Feeling without thinking is chaos! GARY must first exist before it can feel.");
                                 level1State.garyDialogueStep = 0;
@@ -855,7 +862,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                      startDialogue("GARY", "I compute, therefore I am... Acknowledged.", [{ text: "Continue", action: () => {
                         startDialogue("RATIO", "A mind is formed. Now make him talk? Present the second module.", [
                             { text: "Install Language Chip (To speak)", action: () => { level1State.garyDialogueStep = 3; handleGaryInteraction(); }},
-                            { text: "Install Emotion Chip (To feel)", action: () => {
+                            { text: "Install Emotion Personality Chip (To feel)", action: () => {
                                 startDialogue("GARY", "SEQUENCE ERROR. Emotion before logic invites overload. A thinking mind needs the structure of reason before it can process emotion.");
                                 level1State.garyDialogueStep = 0;
                             }}
@@ -865,7 +872,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 case 3:
                     startDialogue("GARY", "Language online. My thoughts have structure.", [{ text: "Continue", action: () => {
                         startDialogue("RATIO", "Present the final module.", [
-                            { text: "Install Emotion Chip (To feel)", action: () => {
+                            { text: "Install Emotion Personality Chip (To feel)", action: () => {
                                 level1State.garyFixed = true;
                                 level1State.garyAnimationState = 'wakingUp';
                                 startDialogue("GARY", "I... understand. Thank you, friend. The Academy grounds are yours to explore. I shall be here if you need assistance.", [{ text: "Continue", action: () => {
@@ -1320,14 +1327,14 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             ctx.textAlign = 'center';
 
             ctx.font = '24px "Roboto Mono"';
-            ctx.fillText("In a world not so far from ours, you are about to", canvas.width / 2, y + 230);
-            ctx.fillText("meet different kinds of AI characters.", canvas.width / 2, y + 270);
-            ctx.fillText("Some will help you. Some won't.", canvas.width / 2, y + 320);
-            ctx.fillText("Some are clever. Some… not so much.", canvas.width / 2, y + 360);
+            ctx.fillText("In a world not so far from ours, you are about to", canvas.width / 2, y + 120);
+            ctx.fillText("meet different kinds of AI characters.", canvas.width / 2, y + 160);
+            ctx.fillText("Some will help you. Some won't.", canvas.width / 2, y + 210);
+            ctx.fillText("Some are clever. Some… not so much.", canvas.width / 2, y + 250);
 
             ctx.font = 'bold 28px "Roboto Mono"';
             ctx.fillStyle = '#FFFF00'; // Yellow
-            ctx.fillText("Press [E] to play!", canvas.width / 2, y + 490);
+            ctx.fillText("Press [E] to play!", canvas.width / 2, y + 350);
         }
         
         function drawStartScreen() {
@@ -1421,7 +1428,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             const { level1State, player, ratio } = gameState;
 
             level1Interactables.forEach(obj => {
-                if (obj.id.match(/cog|loom|chip/) && !level1State.inventory[obj.id]) {
+                if (obj.id.match(/cog|loom|chip/) && !level1State.inventory[obj.id] && level1State.garyInteractionStarted) {
                     let itemImage;
                     if (obj.id === 'cog') itemImage = cogImage;
                     else if (obj.id === 'loom') itemImage = loomImage;
@@ -1456,24 +1463,25 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
 
                         // Draw only during the "on" phase (first 60% of duration)
                         if (elapsed < flashDuration * 0.6 && level1State.arrowFlashCount < 5) {
-                            // Arrow positioned closer to the door
-                            const arrowX = obj.x + obj.width + 80; // Closer to door
-                            const arrowY = obj.y + obj.height / 2;
+                            // Arrow positioned above the door, pointing upward
+                            const arrowX = obj.x + obj.width / 2; // Center horizontally over door
+                            const arrowY = obj.y - 50; // Above the door
 
                             ctx.save();
                             ctx.translate(arrowX, arrowY);
 
                             // Smaller size (1.5x size instead of 3x)
                             ctx.scale(1.5, 1.5);
-                            ctx.rotate(0.2); // Slight rotation
+                            ctx.rotate(-Math.PI / 2); // Rotate to point upward
 
-                            ctx.fillStyle = 'rgba(120, 180, 230, 0.9)'; // Softer steel blue
-                            ctx.shadowColor = 'rgba(120, 180, 230, 0.7)';
-                            ctx.shadowBlur = 20;
+                            // Grey color with slight transparency
+                            ctx.fillStyle = 'rgba(160, 160, 160, 0.85)';
+                            ctx.shadowColor = 'rgba(100, 100, 100, 0.5)';
+                            ctx.shadowBlur = 15;
 
-                            // Draw arrow shape pointing left
+                            // Draw arrow shape pointing up
                             ctx.beginPath();
-                            ctx.moveTo(-25, 0); // Tip pointing left
+                            ctx.moveTo(-25, 0); // Tip
                             ctx.lineTo(-18, -9); // Top wing
                             ctx.lineTo(-18, -4);
                             ctx.lineTo(0, -4); // Shaft top
@@ -1744,7 +1752,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 ctx.fillStyle = currentInventory.loom ? '#00BFFF' : '#555';
                 ctx.fillText("- Language Chip", canvas.width - invWidth + 20, 135);
                 ctx.fillStyle = currentInventory.chip ? '#FF69B4' : '#555';
-                ctx.fillText("- Emotion Chip", canvas.width - invWidth + 20, 165);
+                ctx.fillText("- Emotion Personality Chip", canvas.width - invWidth + 20, 165);
             }
 
             if (!gameState.activeDialogue.isActive) {
