@@ -1,6 +1,5 @@
-Arrow Smaller, less bright in the start level, move up significantly. Less bright. 
-Instead of replay level in the end screen, say replay game, please also then clear the start progress of start level because that still does not work
-For the biodome intro move the press e to confirm part higher so its in the box
-The Terra vault should not be optional, remove the try anyway, and just have them proceed to the terravault
-Finally in the ecology level, make the submit button less bright on hover (also see if its possibly to make the box a bit better designed in terms of style, for example the bottom box after the do not pour text, could be moved more to the left, including the . with it)
-Also once a soil water or light have been submitted its every hard to change, maybe press e again to unsubmit the choice so they can fix their mistake
+Press E to continue can be moved up again by 30px
+The e to stange the submissions doesnt work, pressing E just moves the box to the next box, it doesnt unlock the text
+The submit text in the for that part of the biodome level also could be moved up, its not centered
+the 2nd box for the text submission in addition to the . could also be moved more to the left. 
+Replay button on end screen needs to be moved up, looks like its stuck to the bottom of the page
