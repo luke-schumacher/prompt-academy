@@ -861,6 +861,8 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
         function handleGaryInteraction() {
             const { level1State } = gameState;
             if (!level1State.inventory.cog || !level1State.inventory.loom || !level1State.inventory.chip) {
+                // Fix: Set interaction started to TRUE so chips become visible/interactable
+                level1State.garyInteractionStarted = true;
                 getRatioDialogue("The player is trying to fix GARY but doesn't have all the parts yet. Tell them to find the parts first by looking around. Example: 'We need to find the parts first - look around the yard.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention specific locations like garages, bins, or toolboxes. Just say 'around here' or 'the yard' or 'the place'.");
                 return;
             }
