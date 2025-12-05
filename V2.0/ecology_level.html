@@ -106,7 +106,7 @@
         }
         #replay-button {
             position: absolute;
-            bottom: 10%;
+            bottom: 25%;
             left: 50%;
             transform: translateX(-50%);
             padding: 13px 27px;
@@ -963,6 +963,12 @@
                 return; // Prevent other keys from being processed when species selection is active
             }
 
+            // Check for unsubmit when interface is closed but prompt was submitted
+            if (key === 'e' && gameMode === 'workbench' && !ecologyState.showPromptInterface && ecologyState.promptSubmitted) {
+                unsubmitPrompt(); // Reopen interface
+                return;
+            }
+
             // Prompt interface controls
             if (ecologyState.showPromptInterface && gameMode === 'workbench') {
                 if (key === 'a' || key === 'arrowleft') {
@@ -972,20 +978,10 @@
                     cycleWordSelection(1);
                     return;
                 } else if (key === 'e') {
-                    // Check if interface is closed but prompt was submitted (unsubmit scenario)
-                    if (gameMode === 'workbench' && !ecologyState.showPromptInterface && ecologyState.promptSubmitted) {
-                        unsubmitPrompt(); // Reopen interface
-                        return;
-                    }
-
-                    // Normal interface interaction when open
-                    if (ecologyState.showPromptInterface) {
-                        if (ecologyState.currentSelection === 'submit') {
-                            submitPrompt();
-                        } else {
-                            selectCurrentWord();
-                        }
-                        return;
+                    if (ecologyState.currentSelection === 'submit') {
+                        submitPrompt();
+                    } else {
+                        selectCurrentWord();
                     }
                     return;
                 } else if (key === 'w' || key === 'arrowup') {
@@ -1772,7 +1768,7 @@
             ctx.fillText(`Do not pour `, boxX + 40, line3Y);
 
             // Second blank
-            const blank2X = boxX + 260; // Adjusted X (moved left)
+            const blank2X = boxX + 220; // Adjusted X (moved further left)
 
             // Draw highlight if selected
             if (ecologyState.currentSelection === 'second') {
@@ -1832,7 +1828,7 @@
             ctx.fillStyle = '#FFF';
             ctx.font = 'bold 18px "Roboto Mono"';
             ctx.textAlign = 'center';
-            ctx.fillText('SUBMIT', submitX + submitWidth / 2, submitY + 32);
+            ctx.fillText('SUBMIT', submitX + submitWidth / 2, submitY + submitHeight / 2 + 6);
 
             // Instructions
             const instrY = boxY + boxHeight + 25;
