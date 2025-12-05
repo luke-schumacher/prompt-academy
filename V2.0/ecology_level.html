@@ -9,6 +9,22 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            color: #00FFFF;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 24px;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
         body {
             background-color: #1a1a1a;
             color: #f0f0f0;
@@ -111,7 +127,7 @@
     </style>
 </head>
 <body>
-
+    <div id="loading-overlay">LOADING...</div>
     <div class="game-container">
         <div class="game-console-body">
             <div id="canvas-header">BIO-DOME - ECOLOGY SCHOOL</div>
@@ -134,6 +150,15 @@
     <script type="module">
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
+
+        // Loading Screen Logic
+        window.addEventListener('load', () => {
+            const loader = document.getElementById('loading-overlay');
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                loader.style.display = 'none';
+            }, 500);
+        });
 
         // Initialize background music with quiet volume
         const backgroundMusic = document.getElementById('background-music');
@@ -1615,154 +1640,163 @@
             // Apply alpha to all interface elements (no dark background overlay)
             ctx.globalAlpha = alpha;
 
-            // Draw prompt box with gradient - adjusted size
-            const boxX = 795;
-            const boxY = 200; // Position
-            const boxWidth = 560; // 20% narrower
-            const boxHeight = 350; // Even shorter
+            // Draw prompt box with DARK gradient - adjusted size
+            const boxX = 850; // Moved right (was 795)
+            const boxY = 200; 
+            const boxWidth = 600; // Wider (was 560)
+            const boxHeight = 380; // Taller (was 350)
 
+            // Dark gradient matching dialogue box
             const gradient = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxHeight);
-            gradient.addColorStop(0, 'rgba(230, 240, 255, 0.98)');
-            gradient.addColorStop(1, 'rgba(200, 220, 240, 0.98)');
+            gradient.addColorStop(0, 'rgba(15, 25, 45, 0.95)');
+            gradient.addColorStop(1, 'rgba(25, 35, 60, 0.95)');
             ctx.fillStyle = gradient;
             ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-            ctx.strokeStyle = '#2C5F8D';
-            ctx.lineWidth = 4;
+            
+            // Cyan Glow Border
+            ctx.strokeStyle = '#00FFFF';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#00FFFF';
+            ctx.shadowBlur = 15;
             ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+            ctx.shadowBlur = 0;
 
-            // Draw title bar
-            ctx.fillStyle = '#2C5F8D';
-            ctx.fillRect(boxX, boxY, boxWidth, 40);
-            ctx.fillStyle = '#FFF';
-            ctx.font = 'bold 18px "Roboto Mono"';
+            // Draw title bar (Darker blue)
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+            ctx.fillRect(boxX, boxY, boxWidth, 45);
+            ctx.fillStyle = '#00FFFF';
+            ctx.font = 'bold 20px "Roboto Mono"';
             ctx.textAlign = 'center';
-            ctx.fillText('BIO-BOT INSTRUCTION PANEL', boxX + boxWidth / 2, boxY + 28);
+            ctx.fillText('BIO-BOT INSTRUCTION PANEL', boxX + boxWidth / 2, boxY + 30);
 
-            // Draw prompt text
-            ctx.fillStyle = '#000';
-            ctx.font = 'bold 21px "Roboto Mono"';
+            // Draw prompt text (White)
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 22px "Roboto Mono"';
             ctx.textAlign = 'left';
 
-            const promptY = boxY + 90;
+            const promptY = boxY + 100;
             ctx.fillText(`Pour `, boxX + 40, promptY);
 
-            // First blank with text
+            // First blank
             const blank1X = boxX + 160;
-            const blankWidth = 150;
+            const blankWidth = 160; // Wider
             const blankHeight = 45;
 
-            // Draw highlight if selected
+            // Draw highlight if selected (Cyan border)
             if (ecologyState.currentSelection === 'first') {
-                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
-                ctx.fillRect(blank1X - 10, promptY - 35, blankWidth + 20, blankHeight + 10);
+                ctx.shadowColor = '#00FFFF';
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = '#00FFFF';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(blank1X - 5, promptY - 35, blankWidth + 10, blankHeight + 10);
+                ctx.shadowBlur = 0;
             }
 
-            ctx.fillStyle = '#FFF';
+            // Blank background (Darker)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fillRect(blank1X, promptY - 30, blankWidth, blankHeight);
-            ctx.strokeStyle = '#2C5F8D';
-            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#00AAAA';
+            ctx.lineWidth = 2;
             ctx.strokeRect(blank1X, promptY - 30, blankWidth, blankHeight);
 
             // Draw word in blank
-            ctx.fillStyle = '#000';
-            ctx.font = 'bold 19px "Roboto Mono"';
+            ctx.font = 'bold 20px "Roboto Mono"';
             ctx.textAlign = 'center';
             if (ecologyState.selectedWords.first) {
+                ctx.fillStyle = '#00FFFF'; // Cyan text for filled word
                 ctx.fillText(ecologyState.selectedWords.first.toUpperCase(), blank1X + blankWidth / 2, promptY);
             } else if (ecologyState.currentSelection === 'first') {
-                ctx.fillStyle = '#666';
+                ctx.fillStyle = '#AAA'; // Grey text for current selection preview
                 const currentWord = wordOptions[currentWordIndex];
                 ctx.fillText(currentWord.toUpperCase(), blank1X + blankWidth / 2, promptY);
             } else {
-                ctx.fillStyle = '#BBB';
+                ctx.fillStyle = '#555';
                 ctx.fillText('_____', blank1X + blankWidth / 2, promptY);
             }
 
-            ctx.fillStyle = '#000';
-            ctx.font = 'bold 21px "Roboto Mono"';
+            // Reset text style
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 22px "Roboto Mono"';
             ctx.textAlign = 'left';
             ctx.fillText(` into the pot.`, blank1X + blankWidth + 15, promptY);
 
             // Second line
-            const line2Y = promptY + 60;
+            const line2Y = promptY + 70; // More spacing
             ctx.fillText(`Place the seed into the pot.`, boxX + 40, line2Y);
 
             // Third line
-            const line3Y = line2Y + 60;
+            const line3Y = line2Y + 70;
             ctx.fillText(`Do not pour `, boxX + 40, line3Y);
 
-            // Second blank with text
-            const blank2X = boxX + 310;
+            // Second blank
+            const blank2X = boxX + 320; // Adjusted X
 
             // Draw highlight if selected
             if (ecologyState.currentSelection === 'second') {
-                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
-                ctx.fillRect(blank2X - 10, line3Y - 35, blankWidth + 20, blankHeight + 10);
+                ctx.shadowColor = '#00FFFF';
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = '#00FFFF';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(blank2X - 5, line3Y - 35, blankWidth + 10, blankHeight + 10);
+                ctx.shadowBlur = 0;
             }
 
-            ctx.fillStyle = '#FFF';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.fillRect(blank2X, line3Y - 30, blankWidth, blankHeight);
-            ctx.strokeStyle = '#2C5F8D';
-            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#00AAAA';
+            ctx.lineWidth = 2;
             ctx.strokeRect(blank2X, line3Y - 30, blankWidth, blankHeight);
 
             // Draw word in blank
-            ctx.fillStyle = '#000';
-            ctx.font = 'bold 19px "Roboto Mono"';
+            ctx.font = 'bold 20px "Roboto Mono"';
             ctx.textAlign = 'center';
             if (ecologyState.selectedWords.second) {
+                ctx.fillStyle = '#00FFFF';
                 ctx.fillText(ecologyState.selectedWords.second.toUpperCase(), blank2X + blankWidth / 2, line3Y);
             } else if (ecologyState.currentSelection === 'second') {
-                ctx.fillStyle = '#666';
+                ctx.fillStyle = '#AAA';
                 const currentWord = wordOptions[currentWordIndex];
                 ctx.fillText(currentWord.toUpperCase(), blank2X + blankWidth / 2, line3Y);
             } else {
-                ctx.fillStyle = '#BBB';
+                ctx.fillStyle = '#555';
                 ctx.fillText('_____', blank2X + blankWidth / 2, line3Y);
             }
 
-            ctx.fillStyle = '#000';
-            ctx.font = 'bold 21px "Roboto Mono"';
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 22px "Roboto Mono"';
             ctx.textAlign = 'left';
             ctx.fillText(`.`, blank2X + blankWidth + 15, line3Y);
 
-            // Submit button with better styling
-            const submitY = boxY + boxHeight - 70;
+            // Submit button
+            const submitY = boxY + boxHeight - 80;
             const submitX = boxX + boxWidth / 2 - 100;
             const submitWidth = 200;
             const submitHeight = 50;
 
             if (ecologyState.currentSelection === 'submit') {
-                ctx.fillStyle = '#00CC00';
+                ctx.fillStyle = '#00FF00'; // Bright green highlight
                 ctx.shadowColor = '#00FF00';
                 ctx.shadowBlur = 20;
             } else {
-                ctx.fillStyle = '#4CAF50';
+                ctx.fillStyle = 'rgba(0, 100, 0, 0.8)'; // Dark green normal
             }
             ctx.fillRect(submitX, submitY, submitWidth, submitHeight);
             ctx.shadowBlur = 0;
-            ctx.strokeStyle = '#2E7D32';
-            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 2;
             ctx.strokeRect(submitX, submitY, submitWidth, submitHeight);
 
             ctx.fillStyle = '#FFF';
-            ctx.font = 'bold 15px "Roboto Mono"';
+            ctx.font = 'bold 18px "Roboto Mono"';
             ctx.textAlign = 'center';
             ctx.fillText('SUBMIT', submitX + submitWidth / 2, submitY + 32);
 
-            // Instructions with better styling - smaller and positioned below box
-            const instrY = boxY + boxHeight + 20;
-            const instrBoxWidth = 560;
-            ctx.fillStyle = 'rgba(44, 95, 141, 0.95)';
-            ctx.fillRect(boxX + boxWidth / 2 - instrBoxWidth / 2, instrY, instrBoxWidth, 45);
-            ctx.strokeStyle = '#FFF';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(boxX + boxWidth / 2 - instrBoxWidth / 2, instrY, instrBoxWidth, 45);
-
+            // Instructions
+            const instrY = boxY + boxHeight + 25;
             ctx.fillStyle = '#FFF';
-            ctx.font = 'bold 13px "Roboto Mono"';
+            ctx.font = 'bold 14px "Roboto Mono"';
             ctx.textAlign = 'center';
-            ctx.fillText('Use A/D to cycle words | W/S to change field | E to select/submit', boxX + boxWidth / 2, instrY + 28);
+            ctx.fillText('Use A/D to cycle words | W/S to change field | E to select/submit', boxX + boxWidth / 2, instrY);
 
             // Reset global alpha
             ctx.globalAlpha = 1.0;

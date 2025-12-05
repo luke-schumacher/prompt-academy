@@ -1,0 +1,9 @@
+Name change across the board to AI Academy - make sure things are centered
+Named to Emotion persoanlity chip while it should be just "Persoanlity chip"
+Chips dont become visible after talking to Gary, they become collectible but dont appear
+Arrow to point to the ecology door needs a colour change, moved upwards and to the right, could make the triangle of the arrow bigger, not really pretty, bringter flash
+Music also doesnt continue for the transition screen, find a way to keep start screen music playing
+Longer loading times between levels why? - worth adding a loading screen?
+Make dailogue box height narrower, and more transparent so you can see the background of the transition within the biodome intro, also make sure the aspect ratio is right
+Text selection rework did not stick for ecology level, needs to be reworked, colour same like dialogue boxes, cleaner UI/UX worthy, and little bit bigger and moved to the right
+
