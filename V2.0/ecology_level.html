@@ -885,13 +885,16 @@
                                     ecologyState.selectedWords = { first: null, second: null };
                                     ecologyState.currentSelection = 'first';
                                     ecologyState.showPromptInterface = false;
+                                    ecologyState.promptSubmitted = false; // Reset submission state
                                     gameState.gameMode = 'terraVault';
                                     closeDialogue();
                                 }},
                                 { text: "Try again here", action: () => {
                                     ecologyState.selectedWords = { first: null, second: null };
                                     ecologyState.currentSelection = 'first';
+                                    ecologyState.showPromptInterface = true; // Reopen interface
                                     ecologyState.promptSubmitted = false; // Reset submission state
+                                    ecologyState.promptInterfaceAlpha = 1; // Full opacity
                                     closeDialogue();
                                 }}
                             ]);
@@ -1026,11 +1029,23 @@
             const selectedWord = wordOptions[currentWordIndex];
 
             if (ecologyState.currentSelection === 'first') {
-                ecologyState.selectedWords.first = selectedWord;
-                ecologyState.currentSelection = 'second';
+                // If already has a word selected, deselect it (toggle behavior)
+                if (ecologyState.selectedWords.first !== null) {
+                    ecologyState.selectedWords.first = null;
+                } else {
+                    // Otherwise, select the current word and move to next
+                    ecologyState.selectedWords.first = selectedWord;
+                    ecologyState.currentSelection = 'second';
+                }
             } else if (ecologyState.currentSelection === 'second') {
-                ecologyState.selectedWords.second = selectedWord;
-                ecologyState.currentSelection = 'submit';
+                // If already has a word selected, deselect it (toggle behavior)
+                if (ecologyState.selectedWords.second !== null) {
+                    ecologyState.selectedWords.second = null;
+                } else {
+                    // Otherwise, select the current word and move to submit
+                    ecologyState.selectedWords.second = selectedWord;
+                    ecologyState.currentSelection = 'submit';
+                }
             }
         }
 
@@ -1364,7 +1379,7 @@
 
             // Draw mistake counter if mistakes have been made
             if (gameState.ecologyState.mistakes > 0 && !gameState.ecologyState.levelComplete) {
-                const mistakeBoxX = canvas.width - 270;
+                const mistakeBoxX = 20; // Moved to left side
                 const mistakeBoxY = 120;
 
                 ctx.fillStyle = 'rgba(40, 20, 20, 0.9)';

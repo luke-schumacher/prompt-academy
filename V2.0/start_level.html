@@ -1491,10 +1491,10 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     }
 
                     // Only draw if we haven't flashed 5 times yet
-                    if (level1State.arrowFlashCount < 5) {
+                    if (level1State.arrowFlashCount < 7) {
                         const now = Date.now();
                         const elapsed = now - level1State.arrowFlashTimer;
-                        const flashDuration = 1200; // 1.2 seconds per flash (slower)
+                        const flashDuration = 1400; // 1.2 seconds per flash (slower)
 
                         // Update counter
                         if (elapsed >= flashDuration) {
@@ -1503,9 +1503,9 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                         }
 
                         // Draw only during the "on" phase (first 60% of duration)
-                        if (elapsed < flashDuration * 0.6 && level1State.arrowFlashCount < 5) {
+                        if (elapsed < flashDuration * 0.6 && level1State.arrowFlashCount < 7) {
                             // Arrow positioned above the door, pointing upward
-                            const arrowX = obj.x + obj.width / 2 + 38; // Center horizontally over door, shifted 50px right
+                            const arrowX = obj.x + obj.width / 2 + 39; // Center horizontally over door, shifted 50px right
                             const arrowY = obj.y - 150; // Moved further up (changed from -80)
 
                             ctx.save();
