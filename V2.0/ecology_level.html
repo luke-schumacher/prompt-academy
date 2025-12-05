@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bio-Dome - Prompt Academy</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -33,8 +34,7 @@
             align-items: center;
             border: 2px solid #111;
             width: auto;
-            max-height: 85vh;
-            aspect-ratio: 1536 / 1024;
+            max-height: 98vh;
             box-shadow: inset 0 0 15px rgba(0,0,0,0.7), 0 10px 30px rgba(0,10px,30px,0.5);
         }
         #canvas-header {
@@ -48,9 +48,11 @@
             border: 2px solid #4a4a4a;
             border-radius: 8px;
             width: 100%;
-            max-width: 1536px;
+            max-width: 91vw;
+            max-height: 77vh;
             height: auto;
             aspect-ratio: 1536 / 1024;
+            object-fit: contain;
             background-color: #000;
         }
         #game-controls {
@@ -137,6 +139,7 @@
         const backgroundMusic = document.getElementById('background-music');
         backgroundMusic.volume = 0.25; // Set to 25% volume (fairly quiet)
         let musicStarted = false;
+        let autoSaveInterval; // Auto-save interval ID for clearing on completion
 
         // Play music after user interaction (browser autoplay policy)
         function startBackgroundMusic() {
@@ -631,7 +634,7 @@
             if (!ecologyState.introDone) {
                 startDialogue("Ratio", "Welcome to the Bio-Dome. Here we grow all sorts of modified plant species. The Bio-Bots take care of over 250 different species.", [
                     { text: "Continue", action: () => {
-                        startDialogue("Bio-Bot", "GREETINGS, CADET. I ASSIST WITH GARDENING AND CARING FOR PLANT LIFE. I CANNOT HARM PLANTS.", [
+                        startDialogue("Bio-Bot", "GREETINGS, FRIEND. I ASSIST WITH GARDENING AND CARING FOR PLANT LIFE. I CANNOT HARM PLANTS.", [
                             { text: "Continue", action: () => {
                                 startDialogue("Ratio", "The Bio-Bot here will help you with your first challenge: Growing a Holo-Bloom. But first, you need to learn about it.", [
                                     { text: "Begin Challenge", action: () => {
@@ -654,7 +657,7 @@
                     { text: "Return to Bio-Dome Main", action: mainMenu }
                 ]);
             } else {
-                startDialogue("Bio-Bot", "CONTINUE YOUR WORK AT THE GARDEN BENCH, CADET.");
+                startDialogue("Bio-Bot", "CONTINUE YOUR WORK AT THE GARDEN BENCH, FRIEND.");
             }
         }
 
@@ -1126,7 +1129,7 @@
                         });
 
                         // Show success dialogue
-                        startDialogue("Bio-Bot", "HOLO-BLOOM SUCCESSFULLY GERMINATED. THANK YOU, CADET.", [
+                        startDialogue("Bio-Bot", "HOLO-BLOOM SUCCESSFULLY GERMINATED. THANK YOU, FRIEND.", [
                             { text: "Continue", action: () => {
                                 startDialogue("Ratio", "Well, well. You actually did it. I'm... mildly impressed.", [
                                     { text: "Great!", action: () => {
@@ -1861,31 +1864,49 @@
             const { activeDialogue } = gameState;
             activeDialogue.displayText = activeDialogue.text.substring(0, activeDialogue.charIndex);
 
-            // Dynamic box height based on number of options
-            const baseHeight = 200;
+            // Dynamic box height based on number of options (15% bigger)
+            const baseHeight = 230;
             const optionCount = activeDialogue.options.length;
-            const extraHeight = optionCount > 2 ? (optionCount - 2) * 30 : 0;
+            const extraHeight = optionCount > 2 ? (optionCount - 2) * 35 : 0;
             const boxHeight = baseHeight + extraHeight;
 
-            // Draw box with gradient - no border
-            const boxGradient = ctx.createLinearGradient(0, canvas.height - boxHeight - 20, 0, canvas.height);
-            boxGradient.addColorStop(0, 'rgba(20, 30, 50, 0.95)');
-            boxGradient.addColorStop(1, 'rgba(10, 20, 40, 0.95)');
-            ctx.fillStyle = boxGradient;
-            ctx.fillRect(20, canvas.height - boxHeight - 20, canvas.width - 40, boxHeight);
+            // Draw box with gradient matching game design colors
+            const boxX = 60; // Moved to the right
+            const boxWidth = canvas.width - 100; // Slightly wider overall
+            const boxY = canvas.height - boxHeight - 20;
 
-            // Draw speaker name - no background highlight
-            ctx.fillStyle = '#FFF';
+            const boxGradient = ctx.createLinearGradient(0, boxY, 0, canvas.height);
+            boxGradient.addColorStop(0, 'rgba(15, 25, 45, 0.92)');
+            boxGradient.addColorStop(0.5, 'rgba(25, 35, 60, 0.92)');
+            boxGradient.addColorStop(1, 'rgba(15, 25, 45, 0.92)');
+            ctx.fillStyle = boxGradient;
+            ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+            // Draw cyan border for consistency with game UI
+            ctx.strokeStyle = '#00FFFF';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#00FFFF';
+            ctx.shadowBlur = 10;
+            ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+            ctx.shadowBlur = 0;
+
+            // Draw inner accent line
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(boxX + 8, boxY + 8, boxWidth - 16, boxHeight - 16);
+
+            // Draw speaker name
+            ctx.fillStyle = '#FFFFFF';
             ctx.font = 'bold 20px "Roboto Mono"';
             ctx.textAlign = 'left';
-            ctx.fillText(activeDialogue.speaker, 145, canvas.height - boxHeight + 12);
+            ctx.fillText(activeDialogue.speaker, boxX + 105, boxY + 32);
 
-            // Draw character portrait - no border
+            // Draw character portrait
             if (activeDialogue.speaker === "Ratio" && ratioImageR.complete) {
-                ctx.drawImage(ratioImageR, 40, canvas.height - boxHeight, 70, 70);
+                ctx.drawImage(ratioImageR, boxX + 20, boxY + 20, 70, 70);
             } else if (activeDialogue.speaker === "Bio-Bot" && bioBotHeadImage.complete) {
                 // Use Bio-Bot head when talking
-                ctx.drawImage(bioBotHeadImage, 40, canvas.height - boxHeight, 70, 70);
+                ctx.drawImage(bioBotHeadImage, boxX + 20, boxY + 20, 70, 70);
             }
 
             ctx.font = 'bold 22px "Roboto Mono"';
@@ -1893,29 +1914,29 @@
             ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
             ctx.shadowBlur = 4;
 
-            const lines = wrapText(activeDialogue.displayText, 90);
+            const lines = wrapText(activeDialogue.displayText, 85);
             lines.forEach((line, index) => {
-                ctx.fillText(line, 145, canvas.height - boxHeight + 45 + (index * 30));
+                ctx.fillText(line, boxX + 105, boxY + 65 + (index * 30));
             });
 
             if (activeDialogue.charIndex >= activeDialogue.text.length) {
                 if(activeDialogue.options.length > 0) {
                     activeDialogue.options.forEach((option, index) => {
-                        ctx.fillStyle = index === activeDialogue.selectedOption ? '#FFD700' : '#87CEEB';
+                        ctx.fillStyle = index === activeDialogue.selectedOption ? '#FFD700' : '#00FFFF';
                         if (index === activeDialogue.selectedOption) {
                             ctx.shadowColor = '#FFD700';
                             ctx.shadowBlur = 8;
                         }
                         // Add [E] to the selected option
                         const prefix = index === activeDialogue.selectedOption ? '[E] ▶ ' : '      ';
-                        ctx.fillText(`${prefix}${option.text}`, 50, canvas.height - boxHeight + 135 + (index * 30));
+                        ctx.fillText(`${prefix}${option.text}`, boxX + 30, boxY + 155 + (index * 35));
                         ctx.shadowBlur = 4;
                     });
                 } else {
                     ctx.fillStyle = '#FFD700';
                     ctx.shadowColor = '#FFD700';
                     ctx.shadowBlur = 8;
-                    ctx.fillText("Press [E] to continue...", canvas.width - 450, canvas.height - 40);
+                    ctx.fillText("Press [E] to continue...", boxX + boxWidth - 380, boxY + boxHeight - 20);
                 }
             }
             ctx.shadowBlur = 0;
@@ -1980,16 +2001,10 @@
             // Start music on any click
             document.addEventListener('click', startBackgroundMusic, { once: true });
 
-            const autoSaveInterval = setInterval(saveGame, 180000);
+            autoSaveInterval = setInterval(saveGame, 180000);
 
-            // Start intro dialogue
-            if (!gameState.ecologyState.introDone) {
-                setTimeout(() => {
-                    startDialogue("Ratio", "Welcome to the Bio-Dome, Cadet. This is where we study the ecology of modified plant species. Go talk to the Bio-Bot over there.", [
-                        { text: "Understood", action: closeDialogue }
-                    ]);
-                }, 500);
-            }
+            // Intro dialogue moved to biodome_intro.html transition screen
+            // Player arrives already introduced to Bio-Dome
 
             const assetsToLoad = [
                 bioDomeImage, workbenchImage, terraVaultImage, playerImage, ratioImageL, ratioImageR,
