@@ -132,7 +132,7 @@
         <div class="game-console-body">
             <div id="canvas-header">BIO-DOME - ECOLOGY SCHOOL</div>
             <canvas id="game-canvas" width="1536" height="1024"></canvas>
-            <button id="replay-button">REPLAY LEVEL</button>
+            <button id="replay-button">REPLAY GAME</button>
             <div id="game-controls">
                 <button id="save-button" class="control-button">Save Game</button>
                 <button id="load-button" class="control-button">Load Last Save</button>
@@ -301,6 +301,7 @@
                 showTerraVaultButton: false,
                 showPromptInterface: false,
                 promptInterfaceAlpha: 0, // For fade-in animation
+                promptSubmitted: false, // Track if prompt has been submitted (for unsubmit)
                 showSpeciesSelection: false,
                 speciesSelectionIndex: 0, // Which species is currently selected
                 bioBotBobOffset: 0, // For up/down bobbing motion
@@ -742,20 +743,13 @@
             }
 
             if (!ecologyState.visitedTerraVault) {
-                startDialogue("Ratio", "Before you attempt to prompt the Bio-Bot, visit the Terra-Vault to read up on germinating Holo-Blooms. Unless you want to make the poor thing cry.", [
+                startDialogue("Ratio", "Before you attempt to prompt the Bio-Bot, you must visit the Terra-Vault to read up on germinating Holo-Blooms. The Bio-Bot is sensitive and needs proper instructions.", [
                     { text: "Visit Terra-Vault", action: () => {
                         closeDialogue();
                         transitionToTerraVault();
                         setTimeout(() => {
                             startDialogue("Ratio", "Here's the Terra-Vault. Walk up to the podium and press E to access the species database.");
                         }, 500);
-                    }},
-                    { text: "I'll try anyway", action: () => {
-                        ecologyState.currentStage = 1;
-                        ecologyState.showPromptInterface = true;
-                        ecologyState.promptInterfaceAlpha = 0; // Start fade-in animation
-                        ecologyState.currentSelection = 'first'; // Reset to first blank
-                        closeDialogue();
                     }}
                 ]);
             } else {
@@ -817,10 +811,13 @@
                 return;
             }
 
+            // Mark as submitted and close interface
+            ecologyState.promptSubmitted = true;
+            ecologyState.showPromptInterface = false;
+
             // Correct answer: soil first, water second
             if (first === 'soil' && second === 'water') {
                 ecologyState.bioBotMood = 'happy';
-                ecologyState.showPromptInterface = false;
 
                 // Analytics: Track successful prompt submission
                 analytics.log('prompt_submit', {
@@ -870,6 +867,7 @@
                                     ecologyState.selectedWords = { first: null, second: null };
                                     ecologyState.currentSelection = 'first';
                                     ecologyState.showPromptInterface = false;
+                                    ecologyState.promptSubmitted = false; // Reset submission state
                                     gameState.gameMode = 'bioDomeMain';
                                     gameState.player.x = 750;
                                     gameState.player.y = 850;
@@ -893,6 +891,7 @@
                                 { text: "Try again here", action: () => {
                                     ecologyState.selectedWords = { first: null, second: null };
                                     ecologyState.currentSelection = 'first';
+                                    ecologyState.promptSubmitted = false; // Reset submission state
                                     closeDialogue();
                                 }}
                             ]);
@@ -900,6 +899,23 @@
                     ]);
                 }
             }
+        }
+
+        function unsubmitPrompt() {
+            const { ecologyState } = gameState;
+
+            // Only unsubmit if something was submitted
+            if (!ecologyState.promptSubmitted) {
+                return;
+            }
+
+            // Reopen the prompt interface with previous selections intact
+            ecologyState.showPromptInterface = true;
+            ecologyState.promptSubmitted = false;
+            ecologyState.promptInterfaceAlpha = 1; // Full opacity, no fade-in needed
+            ecologyState.currentSelection = 'first'; // Reset to first blank
+
+            // Keep selectedWords.first and .second so user can see/modify their choices
         }
 
         function handleKeyDown(e) {
@@ -956,10 +972,20 @@
                     cycleWordSelection(1);
                     return;
                 } else if (key === 'e') {
-                    if (ecologyState.currentSelection === 'submit') {
-                        submitPrompt();
-                    } else {
-                        selectCurrentWord();
+                    // Check if interface is closed but prompt was submitted (unsubmit scenario)
+                    if (gameMode === 'workbench' && !ecologyState.showPromptInterface && ecologyState.promptSubmitted) {
+                        unsubmitPrompt(); // Reopen interface
+                        return;
+                    }
+
+                    // Normal interface interaction when open
+                    if (ecologyState.showPromptInterface) {
+                        if (ecologyState.currentSelection === 'submit') {
+                            submitPrompt();
+                        } else {
+                            selectCurrentWord();
+                        }
+                        return;
                     }
                     return;
                 } else if (key === 'w' || key === 'arrowup') {
@@ -1373,6 +1399,23 @@
                 drawPromptInterface();
             }
 
+            // Draw unsubmit hint when interface is closed but prompt was submitted
+            if (gameState.ecologyState.promptSubmitted && !gameState.ecologyState.showPromptInterface && !gameState.activeDialogue.isActive) {
+                ctx.save();
+                ctx.font = 'bold 18px "Roboto Mono"';
+                ctx.textAlign = 'center';
+
+                const hintText = "Press [E] to modify choices";
+                const pulse = Math.sin(Date.now() / 500) * 0.3 + 0.7; // Pulsing effect (0.4 to 1.0)
+
+                ctx.fillStyle = `rgba(0, 255, 255, ${pulse})`;
+                ctx.shadowColor = `rgba(0, 255, 255, ${0.5 * pulse})`;
+                ctx.shadowBlur = 10;
+                ctx.fillText(hintText, canvas.width / 2, 50);
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+
             // Draw Level 2 Complete message
             if (gameState.ecologyState.completeMessageTimer > 0) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -1729,7 +1772,7 @@
             ctx.fillText(`Do not pour `, boxX + 40, line3Y);
 
             // Second blank
-            const blank2X = boxX + 320; // Adjusted X
+            const blank2X = boxX + 260; // Adjusted X (moved left)
 
             // Draw highlight if selected
             if (ecologyState.currentSelection === 'second') {
@@ -1774,9 +1817,9 @@
             const submitHeight = 50;
 
             if (ecologyState.currentSelection === 'submit') {
-                ctx.fillStyle = '#00FF00'; // Bright green highlight
-                ctx.shadowColor = '#00FF00';
-                ctx.shadowBlur = 20;
+                ctx.fillStyle = 'rgba(0, 200, 0, 0.85)'; // Dimmer green highlight
+                ctx.shadowColor = 'rgba(0, 200, 0, 0.6)';
+                ctx.shadowBlur = 15;
             } else {
                 ctx.fillStyle = 'rgba(0, 100, 0, 0.8)'; // Dark green normal
             }
@@ -2024,8 +2067,9 @@
                 mainMenu();
             });
             document.getElementById('replay-button').addEventListener('click', () => {
-                // Clear the ecology level save
-                localStorage.removeItem('ecologyLevelSave_v1');
+                // Clear both save keys to reset entire game
+                localStorage.removeItem('ecologyLevelSave_v1'); // Ecology level progress
+                localStorage.removeItem('meMyselfAiSave_v5'); // Start level progress
                 // Navigate back to start level
                 window.location.href = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                     ? 'start_level.html'
