@@ -310,7 +310,7 @@
                 inventory: { cog: false, loom: false, chip: false },
                 garyFixed: false,
                 garyDialogueStep: 0,
-                garyInteractionStarted: false,
+                garyQuestActive: false,
                 garyAnimationState: 'off',
                 garyAnimationFrame: 0,
                 garyAnimationTimer: 0,
@@ -862,7 +862,8 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             const { level1State } = gameState;
             if (!level1State.inventory.cog || !level1State.inventory.loom || !level1State.inventory.chip) {
                 // Fix: Set interaction started to TRUE so chips become visible/interactable
-                level1State.garyInteractionStarted = true;
+                level1State.garyQuestActive = true;
+                saveGame(); // Ensure state is saved immediately so chips persist
                 getRatioDialogue("The player is trying to fix GARY but doesn't have all the parts yet. Tell them to find the parts first by looking around. Example: 'We need to find the parts first - look around the yard.' OR SOMETHING VERY VERY SIMILAR. Keep it super short, one sentence max. DO NOT mention specific locations like garages, bins, or toolboxes. Just say 'around here' or 'the yard' or 'the place'.");
                 return;
             }
@@ -872,7 +873,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                     startDialogue("GARY", "*whirr...* Identity not found... State purpose...", [
                         { text: "I want to help you come back to life.", action: () => {
                             level1State.garyDialogueStep = 1;
-                            level1State.garyInteractionStarted = true;
+                            level1State.garyQuestActive = true;
                             handleGaryInteraction();
                         }},
                         { text: "I want to pass to the next level.", action: () => { startDialogue("GARY", "Threat detected. Defensive protocols active. *BZZT*"); }},
@@ -1187,7 +1188,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                 for (const obj of currentInteractables) {
                     if (gameMode === 'level1' && obj.id.match(/cog|loom|chip/) && level1State.inventory[obj.id]) continue;
                     // Fix: Prevent interaction with chips before Gary interaction starts
-                    if (gameMode === 'level1' && obj.id.match(/cog|loom|chip/) && !level1State.garyInteractionStarted) continue;
+                    if (gameMode === 'level1' && obj.id.match(/cog|loom|chip/) && !level1State.garyQuestActive) continue;
                     
                     if (gameMode === 'level1' && obj.id === 'biodome_door' && !level1State.garyFixed) continue;
                     if (checkCollision(player, obj)) {
@@ -1468,7 +1469,7 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
             const { level1State, player, ratio } = gameState;
 
             level1Interactables.forEach(obj => {
-                if (obj.id.match(/cog|loom|chip/) && !level1State.inventory[obj.id] && level1State.garyInteractionStarted) {
+                if (obj.id.match(/cog|loom|chip/) && !level1State.inventory[obj.id] && level1State.garyQuestActive) {
                     let itemImage;
                     if (obj.id === 'cog') itemImage = cogImage;
                     else if (obj.id === 'loom') itemImage = loomImage;
