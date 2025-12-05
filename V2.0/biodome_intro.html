@@ -368,7 +368,7 @@
                         }
                         // Add [E] to the selected option
                         const prefix = index === activeDialogue.selectedOption ? '[E] ▶ ' : '      ';
-                        ctx.fillText(`${prefix}${option.text}`, boxX + 30, boxY + 155 + (index * 35));
+                        ctx.fillText(`${prefix}${option.text}`, boxX + 30, boxY + 125 + (index * 35));
                         ctx.shadowBlur = 4;
                     });
                 } else {
