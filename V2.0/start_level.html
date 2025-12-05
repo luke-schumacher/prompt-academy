@@ -1506,19 +1506,19 @@ Keep responses super short, one sentence. Be encouraging and a little playful. D
                         if (elapsed < flashDuration * 0.6 && level1State.arrowFlashCount < 5) {
                             // Arrow positioned above the door, pointing upward
                             const arrowX = obj.x + obj.width / 2; // Center horizontally over door
-                            const arrowY = obj.y - 80; // Moved further up
+                            const arrowY = obj.y - 150; // Moved further up (changed from -80)
 
                             ctx.save();
                             ctx.translate(arrowX, arrowY);
 
-                            // Bigger size (2.5x size)
-                            ctx.scale(2.5, 2.5);
+                            // Smaller size (1.5x size - changed from 2.5x)
+                            ctx.scale(1.5, 1.5);
                             ctx.rotate(-Math.PI / 2); // Rotate to point upward
 
-                            // Cyan/Yellow bright color
-                            ctx.fillStyle = 'rgba(0, 255, 255, 0.95)'; 
-                            ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
-                            ctx.shadowBlur = 20;
+                            // Dimmer cyan color (changed brightness)
+                            ctx.fillStyle = 'rgba(0, 255, 255, 0.6)';
+                            ctx.shadowColor = 'rgba(0, 255, 255, 0.4)';
+                            ctx.shadowBlur = 10;
 
                             // Draw arrow shape pointing up
                             ctx.beginPath();
