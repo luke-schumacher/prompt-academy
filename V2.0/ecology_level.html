@@ -124,6 +124,48 @@
             background-color: rgba(20, 50, 80, 0.9);
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
         }
+        #survey-container {
+            position: absolute;
+            bottom: 45%;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            display: none; /* Hidden by default */
+            z-index: 100;
+        }
+        #survey-title {
+            font-family: 'Roboto Mono', monospace;
+            color: #00FFFF;
+            font-size: 18px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        #survey-qr {
+            opacity: 0.85;
+            width: 150px;
+            height: 150px;
+            margin-bottom: 10px;
+            transition: opacity 0.3s ease;
+        }
+        #survey-qr:hover {
+            opacity: 1;
+        }
+        #survey-link {
+            display: block;
+            font-family: 'Roboto Mono', monospace;
+            color: #00FFFF;
+            font-size: 14px;
+            text-decoration: none;
+            padding: 8px 15px;
+            background-color: rgba(10, 25, 40, 0.8);
+            border: 1px solid #00FFFF;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        #survey-link:hover {
+            background-color: rgba(20, 50, 80, 0.9);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -133,6 +175,13 @@
             <div id="canvas-header">BIO-DOME - ECOLOGY SCHOOL</div>
             <canvas id="game-canvas" width="1536" height="1024"></canvas>
             <button id="replay-button">REPLAY GAME</button>
+            <div id="survey-container">
+                <div id="survey-title">Help Us Improve - Take Our Survey!</div>
+                <a href="https://forms.gle/dB4x3QEHe1H3rSFG6" target="_blank" rel="noopener noreferrer">
+                    <img id="survey-qr" src="assets/ui/survey.jpg" alt="Survey QR Code">
+                </a>
+                <a id="survey-link" href="https://forms.gle/dB4x3QEHe1H3rSFG6" target="_blank" rel="noopener noreferrer">Click here to take survey</a>
+            </div>
             <div id="game-controls">
                 <button id="save-button" class="control-button">Save Game</button>
                 <button id="load-button" class="control-button">Load Last Save</button>
@@ -1200,9 +1249,11 @@
                                         gameState.gameMode = 'endScreen';
                                         clearInterval(autoSaveInterval); // Stop auto-save on completion
                                         saveGame(); // Save AFTER setting gameMode
-                                        // Show Replay Button
+                                        // Show Replay Button and Survey
                                         const replayBtn = document.getElementById('replay-button');
                                         if (replayBtn) replayBtn.style.display = 'block';
+                                        const surveyContainer = document.getElementById('survey-container');
+                                        if (surveyContainer) surveyContainer.style.display = 'block';
                                     }}
                                 ]);
                             }}
